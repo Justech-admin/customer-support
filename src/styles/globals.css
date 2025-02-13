@@ -1,59 +1,197 @@
-/* globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Center the login page */
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f0f4f8;
-}
-
-.login-form {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-}
-
-h2 {
-  font-size: 2rem;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.input-group {
-  margin-bottom: 15px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+/* Reset default styles */
+* {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-input:focus {
-  border-color: #007bff;
+/* Root element styles */
+:root {
+  --sidebar-width: 18rem;
+  --sidebar-width-collapsed: 5rem;
+  --header-height: 4rem;
+  --primary-color: #1a1a1a;
+  --secondary-color: #3b82f6;
+  --text-primary: #ffffff;
+  --text-secondary: #6b7280;
+  --transition-speed: 300ms;
 }
 
-button {
+/* Base styles */
+html,
+body {
+  height: 100%;
   width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 5px;
-  background-color: #007bff;
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button:hover {
-  background-color: #0056b3;
+#__next {
+  height: 100%;
+}
+
+/* Sidebar styles */
+.sidebar {
+  transition: width var(--transition-speed) ease;
+  will-change: width;
+}
+
+.sidebar-expanded {
+  width: var(--sidebar-width);
+}
+
+.sidebar-collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+/* Sidebar items */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  transition: all var(--transition-speed) ease;
+  border-radius: 0.5rem;
+}
+
+.sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-item.active {
+  background-color: var(--secondary-color);
+}
+
+/* Content transition */
+.main-content {
+  transition: margin-left var(--transition-speed) ease;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    z-index: 40;
+  }
+  
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn var(--transition-speed) ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Utility classes */
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Button reset */
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:focus {
+  outline: none;
+  ring: 2px;
+  ring-offset: 2px;
+  ring-color: var(--secondary-color);
+}
+
+/* Loading states */
+.loading {
+  @apply flex justify-center items-center min-h-screen;
+}
+
+.loading::after {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--secondary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Login Page Styles */
+.login-container {
+  @apply flex justify-center items-center min-h-screen bg-gray-100;
+}
+
+.login-box {
+  @apply bg-white p-6 rounded-lg shadow-lg w-full max-w-sm;
+}
+
+.login-box h2 {
+  @apply text-2xl font-semibold text-center mb-4 text-gray-800;
+}
+
+.login-box input {
+  @apply w-full px-4 py-2 border rounded-md outline-none transition-all duration-300;
+}
+
+.login-box input:focus {
+  @apply border-blue-500 shadow-md;
+}
+
+.login-box button {
+  @apply w-full bg-blue-500 text-white py-2 px-4 rounded-md mt-4 transition-all duration-300;
+}
+
+.login-box button:hover {
+  @apply bg-blue-600;
+}
+
+.login-box p {
+  @apply text-sm text-red-500 mt-2 text-center;
 }
