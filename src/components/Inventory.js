@@ -70,6 +70,10 @@ export default function Inventory() {
     setFilteredData(sortedData);
   };
 
+  const totalJammers = jammerData.length;
+  const availableJammers = jammerData.filter((j) => j.status === 0).length;
+  const underServiceJammers = jammerData.filter((j) => j.status === 1).length;
+
   if (loading) return <p className="text-gray-600 text-lg">Loading data...</p>;
   if (error) return <p className="text-red-500 text-lg">Error: {error}</p>;
 
@@ -78,6 +82,49 @@ export default function Inventory() {
       <div className="bg-white shadow-lg rounded-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Rifle Jammers</h2>
 
+        {/* Quick Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="p-4 bg-blue-100 rounded-lg text-center">
+            <h3 className="text-lg font-semibold text-gray-700">Total Jammers</h3>
+            <p className="text-2xl font-bold text-blue-700">{totalJammers}</p>
+          </div>
+          <div className="p-4 bg-green-100 rounded-lg text-center">
+            <h3 className="text-lg font-semibold text-gray-700">Available</h3>
+            <p className="text-2xl font-bold text-green-700">{availableJammers}</p>
+          </div>
+          <div className="p-4 bg-red-100 rounded-lg text-center">
+            <h3 className="text-lg font-semibold text-gray-700">Under Service</h3>
+            <p className="text-2xl font-bold text-red-700">{underServiceJammers}</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-4 mb-6">
+          <select
+            className="p-2 border rounded-lg"
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+          >
+            <option value="">All Locations</option>
+            {locations.map((location, index) => (
+              <option key={index} value={location}>
+                {location}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="p-2 border rounded-lg"
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="Available">Available</option>
+            <option value="Under Service">Under Service</option>
+          </select>
+        </div>
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
             <thead className="bg-gray-200">
@@ -123,9 +170,8 @@ export default function Inventory() {
                 <tr key={index} className="hover:bg-gray-100 transition">
                   <td className="py-2 px-6 border-b">
                     <Link
-                      href={`/INS_ANGRE/jammer/${jammer.serial_number.replace(
-                        /\//g,
-                        ""
+                      href={`/INS_ANGRE/jammer/${encodeURIComponent(
+                        jammer.serial_number
                       )}`}
                       className="text-blue-600 hover:underline"
                     >

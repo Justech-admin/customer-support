@@ -18,41 +18,61 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Extract username since we're using it in the database
+    // Extract username
     const username = session.user.name;
     console.log("Username from session:", username);
 
-    let query;
-    let queryValues;
+    // Extract serial number from query (if provided)
+    let { serial_number } = req.query;
 
-    if (session.user.role === "instructor") {
-      query = `
-        SELECT rj.serial_number, rj.status, rj.type, l.name AS location_name
-        FROM rifle_jammer rj
-        JOIN locations l ON rj.location_id = l.id
-        JOIN users u ON rj.user_id = u.id
-      `;
-      queryValues = [];
-    } else {
-      query = `
-        SELECT rj.serial_number, rj.status, rj.type, l.name AS location_name
-        FROM rifle_jammer rj
-        JOIN locations l ON rj.location_id = l.id
-        JOIN users u ON rj.user_id = u.id
-        WHERE u.username = ?
-      `;
-      queryValues = [username];
+    // Decode URL parameter to handle special characters
+    if (serial_number) {
+      serial_number = decodeURIComponent(serial_number);
     }
 
-    // console.log("Executing Query:", query);
-    // console.log("Query Values:", queryValues);
+    console.log("Serial Number:", serial_number);
+
+    // Base SQL Query
+    let query = `
+      SELECT 
+        rj.serial_number, 
+        rj.status, 
+        rj.type, 
+        rj.manufacturing_date,
+        rj.delivery_date,
+        l.name AS location_name,
+        jd.frequencies, 
+        jd.gloves, 
+        jd.strap, 
+        jd.manual, 
+        jd.battery, 
+        jd.charger,
+        jd.jacket,
+        jd.bag
+      FROM rifle_jammer rj
+      JOIN locations l ON rj.location_id = l.id
+      JOIN users u ON rj.user_id = u.id
+      LEFT JOIN jammer_details jd ON rj.jammer_details_id = jd.id
+      WHERE u.username = ?
+    `;
+
+    const queryValues = [username];
+
+    // If serial_number is provided, filter by it
+    if (serial_number) {
+      query += " AND rj.serial_number = ?";
+      queryValues.push(serial_number);
+    }
+
+    console.log("Executing Query:", query);
+    console.log("Query Values:", queryValues);
 
     const results = await executeQuery({
       query,
       values: queryValues,
     });
 
-    // console.log("Query Results:", results);
+    console.log("Query Results:", results);
 
     return res.status(200).json(results);
   } catch (error) {
