@@ -1,10 +1,28 @@
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { FiBox, FiFileText, FiTool, FiClipboard, FiMenu } from "react-icons/fi";
 
-export default function Sidebar({ collapsed, setCollapsed }) {
+export default function Sidebar() {
   const router = useRouter();
   const { username } = router.query;
+  
+  // Read initial state from localStorage
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return JSON.parse(localStorage.getItem("sidebarCollapsed")) || false;
+    }
+    return false;
+  });
+
+  // Update localStorage whenever the state changes
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(collapsed));
+  }, [collapsed]);
+
+  const toggleSidebar = () => {
+    setCollapsed((prev) => !prev);
+  };
 
   const tabs = [
     { id: "Inventory", name: "Inventory", icon: <FiBox size={20} /> },
@@ -22,7 +40,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       {/* Toggle Button */}
       <div className="flex items-center justify-between p-4">
         {!collapsed && <h2 className="text-2xl font-bold">Dashboard</h2>}
-        <button onClick={() => setCollapsed(!collapsed)} className="text-white p-2 rounded-md">
+        <button onClick={toggleSidebar} className="text-white p-2 rounded-md">
           <FiMenu size={24} />
         </button>
       </div>
@@ -30,7 +48,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
       {/* Sidebar Items */}
       <ul className="space-y-2 p-2">
         {tabs.map((tab) => {
-          const isActive = router.pathname.includes(tab.id); // Checks if the tab is active
+          const isActive = router.pathname.includes(tab.id);
           return (
             <li
               key={tab.id}

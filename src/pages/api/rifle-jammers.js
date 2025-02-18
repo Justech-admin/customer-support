@@ -1,31 +1,38 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
+import { getServerSession } from "next-auth";
+import { getToken } from "next-auth/jwt";
+import authOptions from "./auth/[...nextauth]";
 import { executeQuery } from "@/lib/db";
 
 export default async function handler(req, res) {
-  console.log("API Route Hit");
-
+  // console.log("API Route Hit");
+  
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
     const session = await getServerSession(req, res, authOptions);
-    console.log("Session in API:", session);
+    // console.log("Session in API:", session);
 
-    if (!session) {
+    if (!session) { 
       console.log("No session found");
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Extract username
-    const username = session.user.name;
-    console.log("Username from session:", username);
+    const token = await getToken({ req });
+    // console.log("Session Token:", token);
+
+    // Extract user ID from the token
+    const userid = token?.id;  // Extract id from token
+    console.log("Extracted User ID:", userid);
+
+    if (!userid) {
+      console.log("❌ User ID missing in token");
+      return res.status(401).json({ error: "Unauthorized: No User ID" });
+    }
 
     // Extract serial number from query (if provided)
     let { serial_number } = req.query;
-
-    // Decode URL parameter to handle special characters
     if (serial_number) {
       serial_number = decodeURIComponent(serial_number);
     }
@@ -53,10 +60,10 @@ export default async function handler(req, res) {
       JOIN locations l ON rj.location_id = l.id
       JOIN users u ON rj.user_id = u.id
       LEFT JOIN jammer_details jd ON rj.jammer_details_id = jd.id
-      WHERE u.username = ?
+      WHERE u.id = ?
     `;
 
-    const queryValues = [username];
+    const queryValues = [userid];
 
     // If serial_number is provided, filter by it
     if (serial_number) {
@@ -64,15 +71,15 @@ export default async function handler(req, res) {
       queryValues.push(serial_number);
     }
 
-    console.log("Executing Query:", query);
-    console.log("Query Values:", queryValues);
+    // console.log("Executing Query:", query);
+    // console.log("Query Values:", queryValues);
 
     const results = await executeQuery({
       query,
       values: queryValues,
     });
 
-    console.log("Query Results:", results);
+    // console.log("Query Results:", results);
 
     return res.status(200).json(results);
   } catch (error) {

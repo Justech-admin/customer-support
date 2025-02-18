@@ -9,7 +9,7 @@ export default NextAuth({
       name: "Credentials",
       credentials: {
         username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         try {
@@ -38,14 +38,15 @@ export default NextAuth({
             throw new Error("Invalid credentials");
           }
 
-          console.log("Login successful:", username, "Role:", user.role);
-
+          // console.log("Login successful:", username, "Role:", user.role);
+          console.log("Login successful:", user.id, "Role:", user.role);
           // Return user object including role
           return {
             id: user.id,
             name: user.username,
-            role: user.role,  // Include role
+            role: user.role, // Include role
           };
+          console.log("Login successful:", user.id, "Role:", user.role);
         } catch (error) {
           console.error("Auth Error:", error);
           throw error;
@@ -59,31 +60,31 @@ export default NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge:  60*15, // 1 hour
+    maxAge: 60 * 15, // 1 hour
   },
   callbacks: {
-    async jwt({ token, user }) {
+    jwt: ({ token, user }) => {
       if (user) {
-        token.id = user.id;
-        token.name = user.name;
-        token.role = user.role;
+        token = {
+          ...user
+        }
       }
-      return token;
+      return token
     },
-    async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.name = token.name;
-      session.user.role = token.role;
-      return session;
+    session: ({ token, session }) => {
+      session.user = {
+        ...token
+      }
+      return session
     },
     async redirect({ url, baseUrl, token }) {
       // Redirect based on role
       if (token?.role === "user") {
-        return `${baseUrl}/${token.name}/Index`;
+        return `${baseUrl}/${token.name}/Inventory`;
       }
       return baseUrl; // Default redirect
     },
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: process.env.NODE_ENV === "development",
   secret: process.env.NEXTAUTH_SECRET,
 });
