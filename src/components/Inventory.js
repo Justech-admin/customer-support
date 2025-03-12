@@ -1,7 +1,9 @@
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
 export default function Inventory() {
+  const router = useRouter();
   const [jammerData, setJammerData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -9,25 +11,15 @@ export default function Inventory() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sortConfig, setSortConfig] = useState({
-    key: "serial_number",
-    direction: "asc",
-  });
+  const [sortConfig, setSortConfig] = useState({ key: "serial_number", direction: "asc" });
 
   useEffect(() => {
     async function fetchJammerData() {
       try {
         const response = await fetch(`/api/rifle-jammers`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch data");
-        }
+        if (!response.ok) throw new Error("Failed to fetch data");
         const data = await response.json();
-
-        const uniqueLocations = [
-          ...new Set(data.map((jammer) => jammer.location_name)),
-        ];
-        setLocations(uniqueLocations);
-
+        setLocations([...new Set(data.map((jammer) => jammer.location_name))]);
         setJammerData(data);
         setFilteredData(data);
       } catch (err) {
@@ -36,168 +28,128 @@ export default function Inventory() {
         setLoading(false);
       }
     }
-
     fetchJammerData();
   }, []);
 
   useEffect(() => {
     let filtered = jammerData;
-    if (selectedLocation) {
-      filtered = filtered.filter(
-        (jammer) => jammer.location_name === selectedLocation
-      );
-    }
-    if (selectedStatus !== "") {
-      const statusValue = selectedStatus === "Available" ? 0 : 1;
-      filtered = filtered.filter((jammer) => jammer.status === statusValue);
-    }
+    if (selectedLocation) filtered = filtered.filter(jammer => jammer.location_name === selectedLocation);
+    if (selectedStatus !== "") filtered = filtered.filter(jammer => jammer.status === (selectedStatus === "Available" ? 0 : 1));
     setFilteredData(filtered);
   }, [selectedLocation, selectedStatus, jammerData]);
 
   const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-
-    const sortedData = [...filteredData].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
+    const direction = sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
     setSortConfig({ key, direction });
-    setFilteredData(sortedData);
+    setFilteredData([...filteredData].sort((a, b) => (a[key] > b[key] ? (direction === "asc" ? 1 : -1) : a[key] < b[key] ? (direction === "asc" ? -1 : 1) : 0)));
   };
 
-  const totalJammers = jammerData.length;
-  const availableJammers = jammerData.filter((j) => j.status === 0).length;
-  const underServiceJammers = jammerData.filter((j) => j.status === 1).length;
+  // Color mapping for stat tiles
+  const colorClasses = {
+    blue: {
+      bg: "bg-gradient-to-br from-blue-50 to-blue-100",
+      text: "text-blue-600",
+      title: "text-blue-900"
+    },
+    green: {
+      bg: "bg-gradient-to-br from-green-50 to-green-100",
+      text: "text-green-600", 
+      title: "text-green-900"
+    },
+    red: {
+      bg: "bg-gradient-to-br from-red-50 to-red-100",
+      text: "text-red-600",
+      title: "text-red-900"
+    }
+  };
 
-  if (loading) return <p className="text-gray-600 text-lg">Loading data...</p>;
-  if (error) return <p className="text-red-500 text-lg">Error: {error}</p>;
+  const statCards = [
+    { label: "Total Jammers", count: jammerData.length, color: "blue" },
+    { label: "Available", count: jammerData.filter(j => j.status === 0).length, color: "green" },
+    { label: "Under Service", count: jammerData.filter(j => j.status === 1).length, color: "red" }
+  ];
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div></div>;
+  if (error) return <div className="flex items-center justify-center min-h-screen"><div className="text-red-500 text-lg font-medium bg-red-50 px-6 py-4 rounded-lg">Error: {error}</div></div>;
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="bg-white shadow-lg rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Rifle Jammers</h2>
+    <div className="mb-8">
+      <h1 className="text-2xl font-bold text-gray-900 mb-8">Rifle Jammers</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {statCards.map(({ label, count, color }) => (
+          <div key={label} className={`${colorClasses[color].bg} rounded-xl p-6 flex flex-col shadow-sm`}>
+            <span className={`${colorClasses[color].text} text-sm font-medium`}>{label}</span>
+            <span className={`text-3xl font-bold ${colorClasses[color].title} mt-2`}>{count}</span>
+          </div>
+        ))}
+      </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="p-4 bg-blue-100 rounded-lg text-center">
-            <h3 className="text-lg font-semibold text-gray-700">Total Jammers</h3>
-            <p className="text-2xl font-bold text-blue-700">{totalJammers}</p>
-          </div>
-          <div className="p-4 bg-green-100 rounded-lg text-center">
-            <h3 className="text-lg font-semibold text-gray-700">Available</h3>
-            <p className="text-2xl font-bold text-green-700">{availableJammers}</p>
-          </div>
-          <div className="p-4 bg-red-100 rounded-lg text-center">
-            <h3 className="text-lg font-semibold text-gray-700">Under Service</h3>
-            <p className="text-2xl font-bold text-red-700">{underServiceJammers}</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-4 mb-6">
-          <select
-            className="p-2 border rounded-lg"
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        {[
+          { label: "All Locations", value: selectedLocation, onChange: setSelectedLocation, options: locations }, 
+          { label: "All Status", value: selectedStatus, onChange: setSelectedStatus, options: ["Available", "Under Service"] }
+        ].map(({ label, value, onChange, options }, i) => (
+          <select 
+            key={i} 
+            className="px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+            value={value} 
+            onChange={(e) => onChange(e.target.value)}
           >
-            <option value="">All Locations</option>
-            {locations.map((location, index) => (
-              <option key={index} value={location}>
-                {location}
-              </option>
+            <option value="">{label}</option>
+            {options.map((option, index) => (
+              <option key={index} value={option}>{option}</option>
             ))}
           </select>
+        ))}
+      </div>
 
-          <select
-            className="p-2 border rounded-lg"
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="">All Status</option>
-            <option value="Available">Available</option>
-            <option value="Under Service">Under Service</option>
-          </select>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
-            <thead className="bg-gray-200">
-              <tr>
-                <th
-                  className="py-3 px-6 border-b text-left cursor-pointer"
-                  onClick={() => handleSort("serial_number")}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-gray-50">
+              {["serial_number", "type", "location_name"].map((key) => (
+                <th 
+                  key={key} 
+                  className="px-6 py-4 text-left text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 transition-colors" 
+                  onClick={() => handleSort(key)}
                 >
-                  Serial Number{" "}
-                  {sortConfig.key === "serial_number"
-                    ? sortConfig.direction === "asc"
-                      ? "↑"
-                      : "↓"
-                    : ""}
+                  <div className="flex items-center gap-2">
+                    {key.replace("_", " ").toUpperCase()} 
+                    {sortConfig.key === key && (
+                      <span className="text-blue-500">{sortConfig.direction === "asc" ? "↑" : "↓"}</span>
+                    )}
+                  </div>
                 </th>
-                <th className="py-3 px-6 border-b text-left">Type</th>
-                <th
-                  className="py-3 px-6 border-b text-left cursor-pointer"
-                  onClick={() => handleSort("location_name")}
-                >
-                  Location{" "}
-                  {sortConfig.key === "location_name"
-                    ? sortConfig.direction === "asc"
-                      ? "↑"
-                      : "↓"
-                    : ""}
-                </th>
-                <th
-                  className="py-3 px-6 border-b text-left cursor-pointer"
-                  onClick={() => handleSort("status")}
-                >
-                  Status{" "}
-                  {sortConfig.key === "status"
-                    ? sortConfig.direction === "asc"
-                      ? "↑"
-                      : "↓"
-                    : ""}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((jammer, index) => (
-                <tr key={index} className="hover:bg-gray-100 transition">
-                  <td className="py-2 px-6 border-b">
-                    <Link
-                      href={`/INS_ANGRE/jammer/${encodeURIComponent(
-                        jammer.serial_number
-                      )}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {jammer.serial_number}
-                    </Link>
-                  </td>
-                  <td className="py-2 px-6 border-b">{jammer.type} Band</td>
-                  <td className="py-2 px-6 border-b">{jammer.location_name}</td>
-                  <td className="py-2 px-6 border-b text-center">
-                    <span
-                      className="inline-flex items-center justify-center px-5 py-1 rounded-md text-sm font-semibold"
-                      style={{
-                        backgroundColor:
-                          jammer.status === 0 ? "#BBF7D0" : "#FECACA",
-                        color: jammer.status === 0 ? "#065F46" : "#991B1B",
-                        minWidth: "100px",
-                      }}
-                    >
-                      {jammer.status === 0 ? "Available" : "Under Service"}
-                    </span>
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">STATUS</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredData.map((jammer, index) => (
+              <tr key={index} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4">
+                  <Link 
+                    href={`/${router.query.username}/jammer/${encodeURIComponent(jammer.serial_number)}`} 
+                    className="text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {jammer.serial_number}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 text-gray-700">{jammer.type} [RF,GPS]</td>
+                <td className="px-6 py-4 text-gray-700">{jammer.location_name}</td>
+                <td className="px-6 py-4">
+                  <span 
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      jammer.status === 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {jammer.status === 0 ? "Available" : "Under Service"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

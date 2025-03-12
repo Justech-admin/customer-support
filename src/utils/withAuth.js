@@ -1,23 +1,58 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
+import { getSession } from "next-auth/react";
+import { getToken } from "next-auth/jwt";
 
-const withAuth = (WrappedComponent) => {
-  return (props) => {
-    const router = useRouter();
-    const isAuthenticated = typeof window !== "undefined" && localStorage.getItem("token");
+export function withAuth(getServerSidePropsFunc) {
+  return async (context) => {
+    // Check session first
+    const session = await getSession({ req: context.req });
 
-    useEffect(() => {
-      if (!isAuthenticated) {
-        router.push("/login"); // Redirect to login if not authenticated
-      }
-    }, [isAuthenticated, router]);
-
-    if (!isAuthenticated) {
-      return null; // Prevent flickering
+    if (!session) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
+      };
     }
 
-    return <WrappedComponent {...props} />;
-  };
-};
+    // Check token
+    const token = await getToken({ req: context.req });
 
-export default withAuth;
+    if (!token) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
+      };
+    }
+
+    const tokenName = token?.name;
+    const { username } = context.query;
+
+    if (username && username !== tokenName) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
+      };
+    }
+
+    // If additional props are needed, call the passed getServerSideProps function
+    let pageProps = {};
+    if (getServerSidePropsFunc) {
+      const result = await getServerSidePropsFunc(context);
+      if (result.props) {
+        pageProps = result.props;
+      }
+    }
+
+    return {
+      props: {
+        ...pageProps,
+        tokenName,
+      },
+    };
+  };
+}

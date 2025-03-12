@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Sidebar from "@/components/Sidebar";
+import { withAuth } from "../../../utils/withAuth";
+import Image from "next/image";
 
-const JammerPreview = () => {
+const JammerPreview = ({ tokenName }) => {
   const router = useRouter();
   const { username, serialNum } = router.query;
   const [collapsed, setCollapsed] = useState(false);
@@ -17,11 +19,18 @@ const JammerPreview = () => {
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/rifle-jammers?serial_number=${serialNum}`
+          `/api/rifle-jammers?serial_number=${serialNum}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
         );
+        
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }
+        
         const data = await response.json();
         if (data.length === 0) {
           throw new Error("Jammer not found");
@@ -37,7 +46,6 @@ const JammerPreview = () => {
     fetchJammerData();
   }, [serialNum]);
 
-  // Function to format dates as dd/mm/yy
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -48,7 +56,6 @@ const JammerPreview = () => {
     });
   };
 
-  // Calculate warranty remaining days
   const calculateWarrantyDays = () => {
     if (!jammerData?.delivery_date) return "N/A";
     const deliveryDate = new Date(jammerData.delivery_date);
@@ -60,15 +67,26 @@ const JammerPreview = () => {
     return diffTime > 0 ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 0;
   };
 
-  if (loading) return <p className="text-center text-gray-500">Loading...</p>;
-  if (error) return <p className="text-center text-red-500">Error: {error}</p>;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-center text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-center text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      {/* Main Content */}
       <div className="flex-1 min-h-screen bg-gray-50 p-6 overflow-auto">
         <div className="mb-6">
           <button
@@ -172,5 +190,8 @@ const JammerPreview = () => {
     </div>
   );
 };
+
+// Add getServerSideProps with withAuth
+export const getServerSideProps = withAuth();
 
 export default JammerPreview;

@@ -6,7 +6,7 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Define public routes that do not require authentication
-  const publicRoutes = ["/login", "/api/auth", "/"];
+  const publicRoutes = ["/login", "/api/auth", "/api/rifle-jammer",'/'];
 
   // Allow public routes without authentication
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
@@ -30,5 +30,7 @@ export async function middleware(req: NextRequest) {
 
 // Configure paths that trigger the middleware
 export const config = {
-  matcher: ["/admin/:path*", "/:username/:path*"], // Simplified matcher for efficiency
+  matcher: ["/admin/:path*", "/:username/:path*",'/:username/Inventory',
+    '/:username/tickets',
+    '/:username/tickets/:path*'], // Simplified matcher for efficiency
 };

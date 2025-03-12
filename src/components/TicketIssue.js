@@ -4,17 +4,19 @@ import { useRouter } from 'next/router';
 export default function TicketFormPreview() {
   const router = useRouter();
   const [ticketNumber, setTicketNumber] = useState('');
-  const [searchDigits, setSearchDigits] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJammer, setSelectedJammer] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [jammers, setJammers] = useState([]);
-  const [contactNumber, setContactNumber] = useState('');
-  const [location, setLocation] = useState('');
-  const [incidentDate, setIncidentDate] = useState('');
-  const [name, setName] = useState('');
-  const [designation, setDesignation] = useState('');
-  const [incidentDetails, setIncidentDetails] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    designation: '',
+    contactNumber: '',
+    location: '',
+    incidentDate: '',
+    incidentDetails: '',
+  });
+  const [attachments, setAttachments] = useState([]);
 
   useEffect(() => {
     const fetchJammers = async () => {
@@ -40,20 +42,25 @@ export default function TicketFormPreview() {
     setTicketNumber(newTicketNumber);
   };
 
-  const handleContactNumberChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-    if (value.length <= 10) { // Limit to 10 digits
-      setContactNumber(value);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'contactNumber') {
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 10) {
+        setFormData(prev => ({ ...prev, [name]: numericValue }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
   const handleIncidentDateChange = (e) => {
     const selectedDate = new Date(e.target.value);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time portion for comparison
+    today.setHours(0, 0, 0, 0);
 
     if (selectedDate <= today) {
-      setIncidentDate(e.target.value);
+      setFormData(prev => ({ ...prev, incidentDate: e.target.value }));
     } else {
       alert('Please select a date from today or earlier');
     }
@@ -61,57 +68,60 @@ export default function TicketFormPreview() {
 
   const filteredJammers = jammers.filter(jammer => {
     const serial = jammer.serial_number.toLowerCase();
-    return serial.includes(searchTerm.toLowerCase()) || serial.slice(-searchTerm.length) === searchTerm.toLowerCase();
+    return serial.includes(searchTerm.toLowerCase());
   });
-  
 
   const handleJammerSelect = (jammer) => {
-    if (!jammer ) {
+    if (!jammer) {
       alert('Invalid jammer data. Please select a different jammer.');
       return;
     }
     
     setSelectedJammer(jammer);
     setShowDropdown(false);
-    setSearchDigits(jammer.serial_number.slice(-3));
     setSearchTerm(jammer.serial_number);
-    setLocation(jammer.location_name || '');
+    setFormData(prev => ({ ...prev, location: jammer.location_name || '' }));
   };
 
   const getModelNumber = (serial) => {
     return serial ? serial.split('/').slice(0, -1).join('/') : '';
   };
 
+  const handleFileChange = (e) => {
+    setAttachments(Array.from(e.target.files));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!selectedJammer) {
+      alert('Please select a jammer');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('ticketNumber', ticketNumber);
-    formData.append('name', name.trim());
-    formData.append('designation', designation.trim());
-    formData.append('serialNumber', selectedJammer.serial_number);
-    formData.append('contactNumber', contactNumber);
-    formData.append('incidentDate', incidentDate);
-    formData.append('incidentDetails', incidentDetails.trim());
-
-    const fileInput = document.querySelector('input[type="file"]');
-    if (fileInput.files.length === 0) {
+    if (attachments.length === 0) {
       alert('Please attach at least one file');
       return;
     }
 
-    Array.from(fileInput.files).forEach(file => {
-      formData.append('attachments', file);
+    const submitData = new FormData();
+    submitData.append('ticketNumber', ticketNumber);
+    submitData.append('name', formData.name.trim());
+    submitData.append('designation', formData.designation.trim());
+    submitData.append('serialNumber', selectedJammer.serial_number);
+    submitData.append('contactNumber', formData.contactNumber);
+    submitData.append('incidentDate', formData.incidentDate);
+    submitData.append('incidentDetails', formData.incidentDetails.trim());
+    submitData.append('status', 1); // Initial status: New
+
+    attachments.forEach(file => {
+      submitData.append('attachments', file);
     });
 
     try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
-        body: formData,
+        body: submitData,
       });
       
       if (!response.ok) {
@@ -119,8 +129,9 @@ export default function TicketFormPreview() {
         throw new Error(data.error || 'Error creating ticket');
       }
 
+      const result = await response.json();
       alert('Ticket created successfully!');
-      router.push(`/${router.query.user}/Inventory`);
+      router.push(`/${router.query.username}/Tickets`); // Updated to new tickets page
     } catch (error) {
       console.error('Error submitting form:', error);
       alert(error.message || 'Error submitting ticket');
@@ -128,71 +139,19 @@ export default function TicketFormPreview() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-8">
+    <div className="mb-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Create New Ticket</h1>
         <p className="text-gray-600 mt-1">Fill in the details below to submit a new service ticket</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="bg-gray-50 p-0 rounded-lg">
           <div className="flex items-center">
-            <span className="text-sm font-medium text-gray-700">Ticket Number:</span>
+            <span className="text-xl font-bold text-gray-700">Ticket Number:</span>
             <span className="ml-2 font-mono text-blue-600">{ticketNumber}</span>
           </div>
         </div>
-
-        <div className="space-y-4">
-          <h2 className="font-semibold text-gray-900">Personal Information</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-              <input 
-                type="text" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
-                placeholder="Enter your full name" 
-                required 
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Designation *</label>
-              <input 
-                type="text" 
-                value={designation}
-                onChange={(e) => setDesignation(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
-                placeholder="Enter your designation" 
-                required 
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
-              <input 
-                type="tel" 
-                value={contactNumber} 
-                onChange={handleContactNumberChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
-                placeholder="Enter 10 digit number"
-                required 
-                maxLength="10"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
-              <input 
-                type="text" 
-                value={location} 
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" 
-                readOnly 
-              />
-            </div>
-          </div>
-        </div>
-
         <div className="bg-blue-50 p-4 rounded-lg space-y-4">
           <h2 className="font-semibold text-blue-900">Jammer Details</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -235,13 +194,70 @@ export default function TicketFormPreview() {
           </div>
         </div>
 
+        <div className="space-y-4">
+          <h2 className="font-semibold text-gray-900">Personal Information</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+              <input 
+                type="text" 
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                placeholder="Enter your full name" 
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Designation *</label>
+              <input 
+                type="text" 
+                name="designation"
+                value={formData.designation}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                placeholder="Enter your designation" 
+                required 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+              <input 
+                type="tel" 
+                name="contactNumber"
+                value={formData.contactNumber} 
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                placeholder="Enter 10 digit number"
+                required 
+                maxLength="10"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
+              <input 
+                type="text" 
+                value={formData.location} 
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" 
+                readOnly 
+              />
+            </div>
+          </div>
+        </div>
+
+        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Incident Date *</label>
           <input 
             type="date" 
-            value={incidentDate} 
+            name="incidentDate"
+            value={formData.incidentDate} 
             onChange={handleIncidentDateChange}
-            max={new Date().toISOString().split('T')[0]}
+            max={new Date().toISOString().split('T')[-1]}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
             required 
           />
@@ -251,8 +267,9 @@ export default function TicketFormPreview() {
           <label className="block text-sm font-medium text-gray-700 mb-2">Incident Details *</label>
           <textarea 
             rows={4} 
-            value={incidentDetails}
-            onChange={(e) => setIncidentDetails(e.target.value)}
+            name="incidentDetails"
+            value={formData.incidentDetails}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
             placeholder="Please describe the incident in detail..." 
             required 
@@ -263,6 +280,7 @@ export default function TicketFormPreview() {
           <label className="block text-sm font-medium text-gray-700 mb-2">Attachments *</label>
           <input 
             type="file" 
+            onChange={handleFileChange}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg" 
             multiple 
             required 
@@ -272,7 +290,7 @@ export default function TicketFormPreview() {
         <div className="flex justify-end space-x-4 pt-4">
           <button 
             type="button" 
-            onClick={() => router.push(`/${router.query.user}/Inventory`)}
+            onClick={() => router.push(`/${router.query.user}/tickets`)}
             className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
           >
             Cancel

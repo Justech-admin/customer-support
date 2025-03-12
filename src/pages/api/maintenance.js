@@ -9,71 +9,71 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Authenticate user session
     const session = await getServerSession(req, res, authOptions);
+    console.log("Session in API:", session);
+
     if (!session) {
+      console.log("No session found");
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Get token
     const token = await getToken({ req });
-    if (!token || !token.id || !token.role) {
-      return res.status(401).json({ error: "Unauthorized: Invalid Token" });
+    console.log("Session Token:", token);
+
+    const userid = token?.id;
+    const role = token?.role; // Extract role from token
+    console.log(`Extracted User ID: ${userid}, Role: ${role}`);
+
+    if (!userid || !role) {
+      console.log("❌ User ID or Role missing in token");
+      return res.status(401).json({ error: "Unauthorized: Missing credentials" });
     }
 
-    const { id: userid, role } = token; // Extract User ID and Role
-    console.log(`User ID: ${userid}, Role: ${role}`);
-
-    // Extract optional serial number from query
     let { serial_number } = req.query;
     if (serial_number) {
       serial_number = decodeURIComponent(serial_number);
     }
 
-    // Base SQL Query
+    // Base Query
     let query = `
-      SELECT 
-        rj.serial_number, 
-        rj.status, 
-        rj.type, 
-        rj.manufacturing_date,
-        rj.delivery_date,
-        l.name AS location_name,
-        jd.frequencies, 
-        jd.gloves, 
-        jd.strap, 
-        jd.manual, 
-        jd.battery, 
-        jd.charger,
-        jd.jacket,
-        jd.bag
+      SELECT
+        rj.serial_number AS serialNumber,
+        l.name AS locationName,
+        bm.maintenance_date AS batteryMaintenanceDate,
+        pi.inspection_date AS physicalMaintenanceDate,
+        ft.maintenance_date AS functionalMaintenanceDate
       FROM rifle_jammer rj
-      JOIN locations l ON rj.location_id = l.id
-      JOIN users u ON rj.user_id = u.id
-      LEFT JOIN jammer_details jd ON rj.jammer_details_id = jd.id
+      LEFT JOIN locations l ON rj.location_id = l.id
+      LEFT JOIN BatteryMaintenance bm ON rj.serial_number = bm.serial_number
+      LEFT JOIN PhysicalInspection pi ON rj.serial_number = pi.serial_number
+      LEFT JOIN FunctionalTest ft ON rj.serial_number = ft.serial_number
     `;
 
     const queryValues = [];
 
     if (role === "admin") {
       // Admin can view all users' data
-      query += ""; // No extra condition needed
+      query += ""; // No extra condition
     } else if (role === "user") {
-      // Regular user can only view their own data
-      query += " WHERE u.id = ?";
+      // Users can only view their own records
+      query += " WHERE rj.user_id = ?";
       queryValues.push(userid);
     } else {
       return res.status(403).json({ error: "Forbidden: Invalid Role" });
     }
 
-    // Filter by serial_number if provided
+    // Apply Serial Number Filter (if provided)
     if (serial_number) {
       query += role === "admin" ? " WHERE" : " AND";
       query += " rj.serial_number = ?";
       queryValues.push(serial_number);
     }
 
-    const results = await executeQuery({ query, values: queryValues });
+    // Execute Query
+    const results = await executeQuery({
+      query,
+      values: queryValues,
+    });
 
     return res.status(200).json(results);
   } catch (error) {
