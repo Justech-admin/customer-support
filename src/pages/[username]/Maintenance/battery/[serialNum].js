@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Sidebar from "@/components/Sidebar";
 import { withAuth } from "../../../../utils/withAuth";
 
-const JammerPreview = ({ tokenName }) => {
+const JammerBatteryMaintenance = ({ tokenName }) => {
   const router = useRouter();
   const { username, serialNum } = router.query;
   const [collapsed, setCollapsed] = useState(false);
@@ -11,20 +11,28 @@ const JammerPreview = ({ tokenName }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    maintenanceDate: "",
+    maintenanceDate: new Date().toISOString().split('T')[0],
     jammerType: "",
     model: "",
     serialNumber: serialNum || "",
     location: "",
     checklistItems: {
-      "1a": false,
-      "1b": false,
-      "2a": false,
-      "2b": false,
+      // Battery Condition
+      "1a": false, // Battery box is free from visible damage or swelling
+      "1b": false, // No leakage or corrosion around battery sliding terminals
+      "1c": false, // Battery box is easily seated into its compartment
+      
+      // Charge Status and Display
+      "2a": false, // Battery level is adequate
+      "2b": false, // Charging connections are secure and undamaged
+      "2c": false, // Charger functions properly and charges the battery effectively
+      "2d": false, // Battery display is functioning correctly
+      "2e": false, // Battery level indicators are accurate and clear
+      "2f": false, // No unusual flickering or dimming on the display
     },
     comments: "",
     name: "",
-    designation: ""
+    date: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
@@ -55,9 +63,10 @@ const JammerPreview = ({ tokenName }) => {
         // Set jammer details in form data
         setFormData(prev => ({
           ...prev,
-          jammerDetails: data[0].type || "",
+          jammerType: data[0].type || "",
           location: data[0].locationName || "",
-          serialNumber: serialNum
+          serialNumber: serialNum,
+          model: data[0].model || "",
         }));
       } catch (err) {
         setError(err.message);
@@ -68,16 +77,6 @@ const JammerPreview = ({ tokenName }) => {
 
     fetchJammerData();
   }, [serialNum]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -100,8 +99,32 @@ const JammerPreview = ({ tokenName }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     // Handle form submission - you can add your submission logic here
-    console.log("Form submitted:", formData);
-    // Maybe navigate or show a success message
+    console.log("Battery Maintenance Form submitted:", formData);
+    
+    // API call would go here
+    // const saveData = async () => {
+    //   try {
+    //     const response = await fetch('/api/battery-maintenance', {
+    //       method: 'POST',
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //       },
+    //       body: JSON.stringify(formData)
+    //     });
+    //     
+    //     if (response.ok) {
+    //       router.push(`/${username}/Maintenance`);
+    //     }
+    //   } catch (error) {
+    //     console.error('Error submitting form:', error);
+    //   }
+    // };
+    // 
+    // saveData();
+    
+    // For now, just navigate back
+    alert("Form submitted successfully!");
+    router.push(`/${username}/Maintenance`);
   };
 
   if (loading) {
@@ -126,14 +149,14 @@ const JammerPreview = ({ tokenName }) => {
 
       <div className="flex-1 min-h-screen bg-gray-50 p-6 overflow-auto">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Monthly Functional Test Form */}
+          {/* Monthly Battery Maintenance Form */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-6 text-center underline">MONTHLY FUNCTIONAL TEST FORM</h2>
+            <h2 className="text-xl font-semibold mb-6 text-center underline">MONTHLY BATTERY MAINTENANCE FORM</h2>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-
+                
+                
                 <div className="flex items-center space-x-2">
                   <label className="font-semibold w-36">Serial Number:</label>
                   <input
@@ -179,7 +202,7 @@ const JammerPreview = ({ tokenName }) => {
                 </div>
               </div>
               
-              <h2 className="text-xl font-semibold mt-8 mb-4">Functional Inspection Checklist:</h2>
+              <h2 className="text-lg font-semibold mt-8 mb-4">Battery Maintenance Checklist:</h2>
               
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200">
@@ -192,11 +215,11 @@ const JammerPreview = ({ tokenName }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Power On/Off Section */}
+                    {/* Battery Condition Section */}
                     <tr>
-                      <td className="border p-3 text-center" rowSpan="2">1</td>
-                      <td className="border p-3" rowSpan="2">Power On/Off</td>
-                      <td className="border p-3">Device powers on and off correctly.</td>
+                      <td className="border p-3 text-center" rowSpan="3">1</td>
+                      <td className="border p-3" rowSpan="3">Battery Condition:</td>
+                      <td className="border p-3">Battery box is free from visible damage or swelling.</td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -207,7 +230,7 @@ const JammerPreview = ({ tokenName }) => {
                       </td>
                     </tr>
                     <tr>
-                      <td className="border p-3">Power trigger button functions smoothly.</td>
+                      <td className="border p-3">No leakage or corrosion around battery sliding terminals.</td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -217,12 +240,23 @@ const JammerPreview = ({ tokenName }) => {
                         />
                       </td>
                     </tr>
-                    
-                    {/* Jamming Performance Section */}
                     <tr>
-                      <td className="border p-3 text-center" rowSpan="2">2</td>
-                      <td className="border p-3" rowSpan="2">Jamming Performance</td>
-                      <td className="border p-3">Jamming function activates as expected.</td>
+                      <td className="border p-3">Battery box is easily seated into its compartment.</td>
+                      <td className="border p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.checklistItems["1c"]}
+                          onChange={() => handleCheckboxChange("1c")}
+                          className="h-5 w-5"
+                        />
+                      </td>
+                    </tr>
+                    
+                    {/* Charge Status and Display Section */}
+                    <tr>
+                      <td className="border p-3 text-center" rowSpan="6">2</td>
+                      <td className="border p-3" rowSpan="6">Charge Status and Display:</td>
+                      <td className="border p-3">Battery level is adequate.</td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -233,12 +267,56 @@ const JammerPreview = ({ tokenName }) => {
                       </td>
                     </tr>
                     <tr>
-                      <td className="border p-3">Jamming range is consistent with specifications.</td>
+                      <td className="border p-3">Charging connections are secure and undamaged.</td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
                           checked={formData.checklistItems["2b"]}
                           onChange={() => handleCheckboxChange("2b")}
+                          className="h-5 w-5"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-3">Charger functions properly and charges the battery effectively.</td>
+                      <td className="border p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.checklistItems["2c"]}
+                          onChange={() => handleCheckboxChange("2c")}
+                          className="h-5 w-5"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-3">Battery display is functioning correctly.</td>
+                      <td className="border p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.checklistItems["2d"]}
+                          onChange={() => handleCheckboxChange("2d")}
+                          className="h-5 w-5"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-3">Battery level indicators are accurate and clear.</td>
+                      <td className="border p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.checklistItems["2e"]}
+                          onChange={() => handleCheckboxChange("2e")}
+                          className="h-5 w-5"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-3">No unusual flickering or dimming on the display.</td>
+                      <td className="border p-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.checklistItems["2f"]}
+                          onChange={() => handleCheckboxChange("2f")}
                           className="h-5 w-5"
                         />
                       </td>
@@ -308,4 +386,4 @@ const JammerPreview = ({ tokenName }) => {
 // Add getServerSideProps with withAuth
 export const getServerSideProps = withAuth();
 
-export default JammerPreview;
+export default JammerBatteryMaintenance;

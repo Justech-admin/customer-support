@@ -55,16 +55,29 @@ export default function TicketFormPreview() {
   };
 
   const handleIncidentDateChange = (e) => {
-    const selectedDate = new Date(e.target.value);
+    const value = e.target.value;
+  
+    // Allow clearing the input
+    if (!value) {
+      setFormData(prev => ({ ...prev, incidentDate: '' }));
+      return;
+    }
+  
+    const selectedDate = new Date(value);
     const today = new Date();
+    
+    // Set both dates to midnight for proper comparison
+    selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-
+  
+    // Accept if selectedDate is today or in the past
     if (selectedDate <= today) {
-      setFormData(prev => ({ ...prev, incidentDate: e.target.value }));
+      setFormData(prev => ({ ...prev, incidentDate: value }));
     } else {
       alert('Please select a date from today or earlier');
     }
   };
+  
 
   const filteredJammers = jammers.filter(jammer => {
     const serial = jammer.serial_number.toLowerCase();

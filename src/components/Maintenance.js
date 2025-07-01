@@ -6,7 +6,7 @@ import {
   CheckCircle,
   FileText,
   Search,
-  Filter,
+  MapPin,
 } from "lucide-react";
 import { useRouter } from "next/router";
 
@@ -15,8 +15,8 @@ const MaintenanceTracker = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [formTypeFilter, setFormTypeFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
+  const [locations, setLocations] = useState([]);
 
   const getNextMaintenanceDate = () => {
     const today = new Date();
@@ -107,6 +107,10 @@ const MaintenanceTracker = () => {
           };
         });
 
+        // Extract unique locations
+        const uniqueLocations = [...new Set(data.map(item => item.locationName))];
+        setLocations(uniqueLocations);
+        
         setProducts(transformedData);
         setFilteredProducts(transformedData);
       } catch (error) {
@@ -130,23 +134,14 @@ const MaintenanceTracker = () => {
       );
     }
 
-    if (statusFilter !== "all") {
+    if (locationFilter !== "all") {
       result = result.filter(
-        (product) =>
-          product.maintenanceStatus.functional.status === statusFilter ||
-          product.maintenanceStatus.battery.status === statusFilter ||
-          product.maintenanceStatus.physical.status === statusFilter
-      );
-    }
-
-    if (formTypeFilter !== "all") {
-      result = result.filter(
-        (product) => product.maintenanceStatus[formTypeFilter].status !== "none"
+        (product) => product.locationName === locationFilter
       );
     }
 
     setFilteredProducts(result);
-  }, [searchTerm, statusFilter, formTypeFilter, products]);
+  }, [searchTerm, locationFilter, products]);
 
   const getStatusIndicator = (status) => {
     switch (status) {
@@ -209,35 +204,17 @@ const MaintenanceTracker = () => {
           <div className="w-full md:w-64">
             <div className="flex items-center border rounded-lg overflow-hidden">
               <div className="bg-gray-100 px-3 py-2">
-                <Filter size={18} className="text-gray-500" />
+                <MapPin size={18} className="text-gray-500" />
               </div>
               <select
                 className="flex-1 px-2 py-2 focus:outline-none"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
               >
-                <option value="all">All Statuses</option>
-                <option value="completed">Completed</option>
-                <option value="overdue">Overdue</option>
-                <option value="upcoming">Due Soon</option>
-                <option value="in-progress">Scheduled</option>
-              </select>
-            </div>
-          </div>
-          <div className="w-full md:w-64">
-            <div className="flex items-center border rounded-lg overflow-hidden">
-              <div className="bg-gray-100 px-3 py-2">
-                <FileText size={18} className="text-gray-500" />
-              </div>
-              <select
-                className="flex-1 px-2 py-2 focus:outline-none"
-                value={formTypeFilter}
-                onChange={(e) => setFormTypeFilter(e.target.value)}
-              >
-                <option value="all">All Form Types</option>
-                <option value="functional">Functional Test</option>
-                <option value="battery">Battery Maintenance</option>
-                <option value="physical">Physical Inspection</option>
+                <option value="all">All Locations</option>
+                {locations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -386,10 +363,30 @@ const MaintenanceTracker = () => {
                       >
                         Perform Functional Test
                       </button>
-                      <button className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                      <button 
+                        className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                        onClick={() => {
+                          const encodedSerialNumber = encodeURIComponent(
+                            product.serialNumber
+                          );
+                          router.push(
+                            `/${router.query.username}/Maintenance/battery/${encodedSerialNumber}`
+                          );
+                        }}
+                      >
                         Perform Battery Maintenance
                       </button>
-                      <button className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                      <button 
+                        className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                        onClick={() => {
+                          const encodedSerialNumber = encodeURIComponent(
+                            product.serialNumber
+                          );
+                          router.push(
+                            `/${router.query.username}/Maintenance/physical/${encodedSerialNumber}`
+                          );
+                        }}
+                      >
                         Perform Physical Inspection
                       </button>
                     </div>

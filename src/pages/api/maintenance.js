@@ -34,10 +34,11 @@ export default async function handler(req, res) {
       serial_number = decodeURIComponent(serial_number);
     }
 
-    // Base Query
+    // Updated Base Query to include type
     let query = `
       SELECT
         rj.serial_number AS serialNumber,
+        rj.type AS jammerType,
         l.name AS locationName,
         bm.maintenance_date AS batteryMaintenanceDate,
         pi.inspection_date AS physicalMaintenanceDate,

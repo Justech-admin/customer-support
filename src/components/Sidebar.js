@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { FiBox, FiFileText, FiTool, FiClipboard, FiMenu } from "react-icons/fi";
+import { FiBox, FiFileText, FiTool, FiClipboard, FiMenu, FiLogOut, FiX } from "react-icons/fi";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -15,6 +15,8 @@ export default function Sidebar() {
     return false;
   });
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // Update localStorage whenever the state changes
   useEffect(() => {
     localStorage.setItem("sidebarCollapsed", JSON.stringify(collapsed));
@@ -22,6 +24,27 @@ export default function Sidebar() {
 
   const toggleSidebar = () => {
     setCollapsed((prev) => !prev);
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    // Clear authentication data
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      localStorage.removeItem("authToken");
+      // Clear any other auth-related items you might have
+    }
+    
+    // Redirect to login page
+    router.push("/login");
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
   };
 
   const tabs = [
@@ -33,7 +56,7 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`bg-gray-900 text-white h-screen transition-all duration-300 ease-in-out shadow-lg ${
+      className={`bg-gray-900 text-white h-screen transition-all duration-300 ease-in-out shadow-lg flex flex-col ${
         collapsed ? "w-20" : "w-72"
       }`}
     >
@@ -46,7 +69,7 @@ export default function Sidebar() {
       </div>
 
       {/* Sidebar Items */}
-      <ul className="space-y-2 p-2">
+      <ul className="space-y-2 p-2 flex-1">
         {tabs.map((tab) => {
           const isActive = router.pathname.includes(tab.id);
           return (
@@ -64,6 +87,51 @@ export default function Sidebar() {
           );
         })}
       </ul>
+
+      {/* Logout Button */}
+      <div className="p-2 border-t border-gray-700">
+        <button
+          onClick={handleLogoutClick}
+          className="w-full flex items-center p-3 rounded-lg transition-all duration-300 ease-in-out hover:bg-red-600 text-red-400 hover:text-white"
+        >
+          <div className="flex items-center justify-center w-12">
+            <FiLogOut size={20} />
+          </div>
+          {!collapsed && <span className="text-lg">Logout</span>}
+        </button>
+      </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-80 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Logout</h3>
+              <button
+                onClick={handleLogoutCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleLogoutCancel}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+              >
+                No
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
