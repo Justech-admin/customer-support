@@ -18,7 +18,7 @@ export function withAuth(getServerSidePropsFunc) {
     // Check token
     const token = await getToken({ req: context.req });
 
-    if (!token) {
+    if (!token || !session) {
       return {
         redirect: {
           destination: "/login",
@@ -28,9 +28,10 @@ export function withAuth(getServerSidePropsFunc) {
     }
 
     const tokenName = token?.name;
+    const role = token?.role;
     const { username } = context.query;
 
-    if (username && username !== tokenName) {
+    if (role === "user" && username && username !== tokenName) {
       return {
         redirect: {
           destination: "/login",

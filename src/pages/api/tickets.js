@@ -6,10 +6,12 @@ import { executeQuery } from "@/lib/db";
 import formidable from "formidable";
 import fs from "fs";
 import path from "path";
+import nodemailer from "nodemailer";
+
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: true,
   },
 };
 
@@ -48,6 +50,9 @@ export default async function handler(req, res) {
         return await handleGetRequest(req, res, userId, userRole,username);
       case "POST":
         return await handlePostRequest(req, res, userId, userRole,username);
+      case "PUT":
+        return await handlePutRequest(req, res, userId, userRole, username);
+
       default:
         return res.status(405).json({ error: "Method Not Allowed" });
     }
@@ -79,7 +84,9 @@ async function handleGetRequest(req, res, userId, userRole, username) {
     st.updates, 
     l.name AS location, 
     rj.delivery_date, 
-    jd.frequencies 
+    jd.frequencies ,
+    e.name AS engineer_name,       
+    e.email_id AS engineer_email 
 FROM 
     service_tickets st 
 LEFT JOIN 
@@ -88,6 +95,8 @@ LEFT JOIN
     locations l ON rj.location_id = l.id 
 LEFT JOIN 
     jammer_details jd ON rj.jammer_details_id = jd.id 
+ LEFT JOIN 
+    engineers e ON st.assigned_engineer_id = e.engineer_id
 WHERE 
     1=1
   `;
@@ -222,4 +231,71 @@ async function handlePostRequest(req, res, userId) {
     }
     throw error;
   }
+}
+
+async function handlePutRequest(req, res, userId, userRole, username) {
+  if (userRole !== "admin") {
+    return res.status(403).json({ error: "Only admin can assign engineers" });
+  }
+
+  const { ticketId } = req.query;
+  const { engineerId } = req.body; // ✅ FIX: now defined
+
+  if (!ticketId || !engineerId) {
+    return res.status(400).json({ error: "Missing ticketId or engineerId" });
+  }
+
+  try {
+    // Update ticket with engineer
+    await executeQuery({
+      query: `UPDATE service_tickets SET assigned_engineer_id = ? WHERE id = ?`,
+      values: [engineerId, ticketId],
+    });
+
+    // Fetch engineer email
+    const engineer = await executeQuery({
+      query: `SELECT name, email_id FROM engineers WHERE engineer_id = ?`,
+      values: [engineerId],
+    });
+
+    if (engineer.length === 0) {
+      return res.status(404).json({ error: "Engineer not found" });
+    }
+
+    const { name, email_id } = engineer[0];
+
+    // Send email notification
+    await sendAssignmentEmail(email_id, name, ticketId);
+
+    return res.status(200).json({ message: "Engineer assigned and notified" });
+  } catch (error) {
+    console.error("Error in engineer assignment:", error);
+    return res.status(500).json({ error: "Failed to assign engineer" });
+  }
+}
+
+
+
+async function sendAssignmentEmail(toEmail, engineerName, ticketId) {
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Ticketing System" <${process.env.SMTP_EMAIL}>`,
+    to: toEmail,
+    subject: `Ticket #${ticketId} Assigned to You`,
+    html: `
+      <p>Dear ${engineerName},</p>
+      <p>You have been assigned to Ticket <strong>#${ticketId}</strong>.</p>
+      <p>Please log in to the portal to view and resolve it.</p>
+      <p>Regards,<br/>Support Team</p>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
 }

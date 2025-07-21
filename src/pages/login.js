@@ -25,7 +25,8 @@ export default function LoginPage() {
       if (userSession?.user?.role === "user") {
         router.push(`/${userSession.user.name}/Inventory`);
       } else {
-        router.push("/admin/dashboard");
+        router.push(`/admin/AdminDashboard`);
+
       }
     }
   };
