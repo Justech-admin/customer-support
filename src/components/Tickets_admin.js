@@ -1,127 +1,108 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ChevronDown, ChevronRight, FileText, Loader } from 'lucide-react';
+import Link from "next/link";
+import { ChevronDown, ChevronRight, FileText, Loader } from "lucide-react";
 
 const TicketStatusPage = () => {
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
-
-
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
   
 
   useEffect(() => {
     const fetchTickets = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/tickets');
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const response = await fetch("/api/tickets");
+        if (!response.ok)
+          throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-
-        setTickets(data.tickets);     
-        // setEngineers(data.engineers); // ✅ new
+        setTickets(data.tickets);
         setError(null);
       } catch (err) {
-        console.error('Error fetching tickets:', err);
-        setError('Failed to load tickets. Please try again later.');
+        console.error("Error fetching tickets:", err);
+        setError("Failed to load tickets. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-
-    
     fetchTickets();
   }, []);
 
   const getStatusStyle = (status) => {
     const statusMap = {
-      1: { label: 'Open', bg: 'bg-amber-500', text: 'text-white' },
-      2: { label: 'Service Under Progress', bg: 'bg-blue-500', text: 'text-white' },
-      3: { label: 'Service Completed', bg: 'bg-amber-500', text: 'text-white' },
-      4: { label: 'Pending', bg: 'bg-emerald-500', text: 'text-white' },
-      5: { label: 'Resolved', bg: 'bg-purple-500', text: 'text-white' }
+      1: { label: "Open", bg: "bg-amber-500", text: "text-white" },
+      2: {
+        label: "Service Under Progress",
+        bg: "bg-blue-500",
+        text: "text-white",
+      },
+      3: { label: "Service Completed", bg: "bg-amber-500", text: "text-white" },
+      4: { label: "Pending", bg: "bg-emerald-500", text: "text-white" },
+      5: { label: "Resolved", bg: "bg-purple-500", text: "text-white" },
     };
     return statusMap[status] || statusMap[1];
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
-      return new Date(dateString).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+      return new Date(dateString).toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     } catch {
-      return 'Invalid Date';
-    }
-  };
-
-  const formatIncidentDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }).replace(/\//g, '/');
-    } catch {
-      return 'Invalid Date';
+      return "Invalid Date";
     }
   };
 
   const checkWarrantyStatus = (deliveryDate) => {
-    if (!deliveryDate) return { 
-      status: 'Unknown', 
-      style: 'bg-slate-100 text-slate-800' 
-    };
-    
+    if (!deliveryDate)
+      return { status: "Unknown", style: "bg-slate-100 text-slate-800" };
     try {
       const delivered = new Date(deliveryDate);
       const now = new Date();
       const warrantyEnd = new Date(delivered);
       warrantyEnd.setFullYear(warrantyEnd.getFullYear() + 2);
-      
       if (now <= warrantyEnd) {
         const daysLeft = Math.ceil((warrantyEnd - now) / (1000 * 60 * 60 * 24));
         return {
           status: `In Warranty (${daysLeft} days left)`,
-          style: 'bg-emerald-50 text-emerald-700',
-          expiryDate: warrantyEnd.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
+          style: "bg-emerald-50 text-emerald-700",
+          expiryDate: warrantyEnd.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
         };
       } else {
         return {
-          status: 'Out of Warranty',
-          style: 'bg-red-50 text-red-700',
-          expiryDate: warrantyEnd.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })
+          status: "Out of Warranty",
+          style: "bg-red-50 text-red-700",
+          expiryDate: warrantyEnd.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          }),
         };
       }
     } catch {
-      return { 
-        status: 'Error', 
-        style: 'bg-slate-100 text-slate-800' 
-      };
+      return { status: "Error", style: "bg-slate-100 text-slate-800" };
     }
   };
 
   const parseAttachments = (attachments) => {
     if (!attachments) return [];
     try {
-      return typeof attachments === 'string' ? JSON.parse(attachments) : attachments;
+      return typeof attachments === "string"
+        ? JSON.parse(attachments)
+        : attachments;
     } catch (error) {
-      console.error('Error parsing attachments:', error);
+      console.error("Error parsing attachments:", error);
       return [];
     }
   };
@@ -136,6 +117,15 @@ const TicketStatusPage = () => {
     setExpandedRows(newExpandedRows);
   };
 
+  const filteredAndSortedTickets = tickets
+    .filter(
+      (ticket) =>
+        statusFilter === "" || ticket.status === parseInt(statusFilter)
+    )
+    .sort((a, b) =>
+      sortOrder === "asc" ? a.status - b.status : b.status - a.status
+    );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 py-8">
@@ -148,14 +138,6 @@ const TicketStatusPage = () => {
       </div>
     );
   }
-  const filteredAndSortedTickets = tickets
-  .filter((ticket) => {
-    return statusFilter === '' || ticket.status === parseInt(statusFilter);
-  })
-  .sort((a, b) => {
-    return sortOrder === 'asc' ? a.status - b.status : b.status - a.status;
-  });
-
 
   if (error) {
     return (
@@ -171,19 +153,24 @@ const TicketStatusPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 ">
-        <div className='mb-6'>
-            <h1 className="text-2xl font-bold text-black">Service Tickets</h1>
-            <p className="text-gray-600">Manage and track your service tickets.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-black">Service Tickets</h1>
+          <p className="text-gray-600">
+            Manage and track your service tickets.
+          </p>
         </div>
+
         <div className="flex flex-wrap gap-4 mb-4 items-center">
-          <div className="ml-auto ">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Filter by Status</label>
+          <div className="ml-auto">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Filter by Status
+            </label>
             <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-slate-300 rounded px-3 py-2 text-sm"
-              >
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-2 text-sm"
+            >
               <option value="">All</option>
               <option value="1">Open</option>
               <option value="2">Service Under Progress</option>
@@ -194,12 +181,14 @@ const TicketStatusPage = () => {
           </div>
 
           <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Sort by Status</label>
-                <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="border border-slate-300 rounded px-3 py-2 text-sm"
-              >
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Sort by Status
+            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="border border-slate-300 rounded px-3 py-2 text-sm"
+            >
               <option value="asc">Opened</option>
               <option value="desc">Resolved</option>
             </select>
@@ -211,11 +200,8 @@ const TicketStatusPage = () => {
             <p className="text-slate-500">No tickets found</p>
           </div>
         ) : (
-          
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              
-
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
@@ -241,38 +227,44 @@ const TicketStatusPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredAndSortedTickets.map((ticket) => {
-                    const warrantyInfo = checkWarrantyStatus(ticket.delivery_date);
+                    const warrantyInfo = checkWarrantyStatus(
+                      ticket.delivery_date
+                    );
                     const statusStyle = getStatusStyle(ticket.status);
-                    
                     return (
                       <React.Fragment key={ticket.id}>
-                        <tr 
+                        <tr
                           className="hover:bg-slate-50 cursor-pointer transition-colors"
                           onClick={() => toggleRow(ticket.id)}
                         >
-                          
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                            {ticket.ticket_number || 'N/A'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 underline">
+                            <Link
+                              href={`/admin/ticket/${ticket.ticket_number}`}
+                            >
+                              {ticket.ticket_number || "N/A"}
+                            </Link>
                           </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                            {ticket.serial_number || 'N/A'}
+                            {ticket.serial_number || "N/A"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                             {formatDate(ticket.created_at)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                            {ticket.reporter || 'N/A'}
+                            {ticket.reporter || "N/A"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                            {ticket.location || 'N/A'}
+                            {ticket.location || "N/A"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
+                            >
                               {statusStyle.label}
                             </span>
                           </td>
                         </tr>
-                        
                       </React.Fragment>
                     );
                   })}

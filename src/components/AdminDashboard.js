@@ -18,7 +18,7 @@ const AdminDashboard = () => {
       try {
         const res = await fetch("/api/tickets");
         const data = await res.json();
-        setAllTickets(data);
+        setAllTickets(data.tickets);
       } catch (err) {
         console.error("Failed to fetch ticket data:", err);
       }
