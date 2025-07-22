@@ -69,48 +69,53 @@ async function handleGetRequest(req, res, userId, userRole, username) {
 
   let query = `
     SELECT 
-    st.id, 
-    st.ticket_number, 
-    st.user_id, 
-    st.serial_number, 
-    st.contact_number, 
-    st.incident_date, 
-    st.incident_details, 
-    st.status, 
-    st.attachments, 
-    st.name AS reporter, 
-    st.created_at, 
-    st.designation, 
-    st.updates, 
-    l.name AS location, 
-    rj.delivery_date, 
-    jd.frequencies ,
-    e.name AS engineer_name,       
-    e.email_id AS engineer_email 
-FROM 
-    service_tickets st 
-LEFT JOIN 
-    rifle_jammer rj ON st.serial_number = rj.serial_number 
-LEFT JOIN 
-    locations l ON rj.location_id = l.id 
-LEFT JOIN 
-    jammer_details jd ON rj.jammer_details_id = jd.id 
- LEFT JOIN 
-    engineers e ON st.assigned_engineer_id = e.engineer_id
-WHERE 
-    1=1
+      st.id, 
+      st.ticket_number, 
+      st.user_id, 
+      st.serial_number, 
+      st.contact_number, 
+      st.incident_date, 
+      st.incident_details, 
+      st.status, 
+      st.attachments, 
+      st.name AS reporter, 
+      st.created_at, 
+      st.designation, 
+      st.updates, 
+      l.name AS location, 
+      rj.delivery_date, 
+      jd.frequencies,
+      e.name AS engineer_name,       
+      e.email_id AS engineer_email 
+    FROM 
+      service_tickets st 
+    LEFT JOIN 
+      rifle_jammer rj ON st.serial_number = rj.serial_number 
+    LEFT JOIN 
+      locations l ON rj.location_id = l.id 
+    LEFT JOIN 
+      jammer_details jd ON rj.jammer_details_id = jd.id 
+    LEFT JOIN 
+      engineers e ON st.assigned_engineer_id = e.engineer_id
+    WHERE 1=1
   `;
 
   const values = [];
 
-  // Add user filtering unless admin
+  // Restrict to user's own tickets if not admin
   if (userRole !== "admin") {
     query += " AND st.user_id = ?";
     values.push(userId);
   }
 
+  // Allow lookup by ticket ID or ticket number
   if (ticketId) {
-    query += " AND st.id = ?";
+    const isNumericId = /^\d+$/.test(ticketId); // True if ticketId is all digits
+    if (isNumericId) {
+      query += " AND st.id = ?";
+    } else {
+      query += " AND st.ticket_number = ?";
+    }
     values.push(ticketId);
   }
 
@@ -126,7 +131,6 @@ WHERE
     values,
   });
 
-  // Get all engineers (for assignment dropdown)
   const engineers = await executeQuery({
     query: `SELECT engineer_id, name, email_id FROM engineers`,
   });
@@ -134,8 +138,9 @@ WHERE
   return res.status(200).json({
     tickets,
     engineers,
-});
+  });
 }
+
 
 async function handlePostRequest(req, res, userId) {
   // Configure file upload
