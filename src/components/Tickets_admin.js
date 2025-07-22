@@ -7,23 +7,10 @@ const TicketStatusPage = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [engineers, setEngineers] = useState([]);
-  
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
 
 
-  useEffect(() => {
-    const fetchEngineers = async () => {
-      try {
-        const response = await fetch('/api/engineers'); // create this endpoint
-        const data = await response.json();
-        setEngineers(data);
-      } catch (error) {
-        console.error("Failed to fetch engineers", error);
-      }
-    };
-
-    fetchEngineers();
-  }, []);
   
 
   useEffect(() => {
@@ -33,7 +20,9 @@ const TicketStatusPage = () => {
         const response = await fetch('/api/tickets');
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-        setTickets(data);
+
+        setTickets(data.tickets);     
+        // setEngineers(data.engineers); // ✅ new
         setError(null);
       } catch (err) {
         console.error('Error fetching tickets:', err);
@@ -41,7 +30,8 @@ const TicketStatusPage = () => {
       } finally {
         setLoading(false);
       }
-  };
+    };
+
     
     fetchTickets();
   }, []);
@@ -49,10 +39,10 @@ const TicketStatusPage = () => {
   const getStatusStyle = (status) => {
     const statusMap = {
       1: { label: 'Open', bg: 'bg-amber-500', text: 'text-white' },
-      2: { label: 'In Progress', bg: 'bg-blue-500', text: 'text-white' },
-      3: { label: 'Pending', bg: 'bg-amber-500', text: 'text-white' },
-      4: { label: 'Resolved', bg: 'bg-emerald-500', text: 'text-white' },
-      5: { label: 'Closed', bg: 'bg-purple-500', text: 'text-white' }
+      2: { label: 'Service Under Progress', bg: 'bg-blue-500', text: 'text-white' },
+      3: { label: 'Service Completed', bg: 'bg-amber-500', text: 'text-white' },
+      4: { label: 'Pending', bg: 'bg-emerald-500', text: 'text-white' },
+      5: { label: 'Resolved', bg: 'bg-purple-500', text: 'text-white' }
     };
     return statusMap[status] || statusMap[1];
   };
@@ -158,6 +148,14 @@ const TicketStatusPage = () => {
       </div>
     );
   }
+  const filteredAndSortedTickets = tickets
+  .filter((ticket) => {
+    return statusFilter === '' || ticket.status === parseInt(statusFilter);
+  })
+  .sort((a, b) => {
+    return sortOrder === 'asc' ? a.status - b.status : b.status - a.status;
+  });
+
 
   if (error) {
     return (
@@ -178,18 +176,49 @@ const TicketStatusPage = () => {
             <h1 className="text-2xl font-bold text-black">Service Tickets</h1>
             <p className="text-gray-600">Manage and track your service tickets.</p>
         </div>
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
+          <div className="ml-auto ">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Filter by Status</label>
+            <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-slate-300 rounded px-3 py-2 text-sm"
+              >
+              <option value="">All</option>
+              <option value="1">Open</option>
+              <option value="2">Service Under Progress</option>
+              <option value="3">Service Completed</option>
+              <option value="4">Pending</option>
+              <option value="5">Resolved</option>
+            </select>
+          </div>
+
+          <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sort by Status</label>
+                <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="border border-slate-300 rounded px-3 py-2 text-sm"
+              >
+              <option value="asc">Opened</option>
+              <option value="desc">Resolved</option>
+            </select>
+          </div>
+        </div>
 
         {tickets.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
             <p className="text-slate-500">No tickets found</p>
           </div>
         ) : (
+          
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
+              
+
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="w-10 px-6 py-3"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Ticket Number
                     </th>
@@ -211,7 +240,7 @@ const TicketStatusPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {tickets.map((ticket) => {
+                  {filteredAndSortedTickets.map((ticket) => {
                     const warrantyInfo = checkWarrantyStatus(ticket.delivery_date);
                     const statusStyle = getStatusStyle(ticket.status);
                     
@@ -221,16 +250,11 @@ const TicketStatusPage = () => {
                           className="hover:bg-slate-50 cursor-pointer transition-colors"
                           onClick={() => toggleRow(ticket.id)}
                         >
-                          <td className="px-6 py-4">
-                            {expandedRows.has(ticket.id) ? 
-                              <ChevronDown className="w-4 h-4 text-slate-400" /> : 
-                              <ChevronRight className="w-4 h-4 text-slate-400" />
-                            }
-                          </td>
+                          
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                             {ticket.ticket_number || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                             {ticket.serial_number || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
@@ -248,166 +272,7 @@ const TicketStatusPage = () => {
                             </span>
                           </td>
                         </tr>
-                        {expandedRows.has(ticket.id) && (
-                          <tr className="bg-slate-50">
-                            <td colSpan={7} className="px-6 py-4">
-                              <div className="grid grid-cols-2 gap-8">
-                                {/* Left Column */}
-                                <div className="space-y-6">
-                                  {/* Reporter Details */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Reporter Details</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Name</span>
-                                        <span className="text-sm font-medium text-slate-900">{ticket.reporter || 'N/A'}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Contact</span>
-                                        <span className="text-sm font-medium text-slate-900">{ticket.contact_number || 'N/A'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Device Information */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Device Information</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Serial Number</span>
-                                        <span className="text-sm font-medium text-slate-900">{ticket.serial_number || 'N/A'}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Delivery Date</span>
-                                        <span className="text-sm font-medium text-slate-900">{formatDate(ticket.delivery_date)}</span>
-                                      </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Frequencies</span>
-                                        <span className="text-sm font-medium text-slate-900">{ticket.frequencies || 'N/A'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Warranty Status */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Warranty Status</h3>
-                                    <div className={`rounded-lg p-4 ${warrantyInfo.style}`}>
-                                      <div className="font-medium">{warrantyInfo.status}</div>
-                                      {warrantyInfo.expiryDate && (
-                                        <div className="text-xs mt-1">
-                                          Warranty expiry: {warrantyInfo.expiryDate}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Right Column */}
-                                <div className="space-y-6">
-                                  {/* Incident Details */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Incident Details</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
-                                      <div className="flex justify-between">
-                                        <span className="text-sm text-slate-500">Date</span>
-                                        <span className="text-sm font-medium text-slate-900">
-                                          {formatIncidentDate(ticket.incident_date)}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-slate-500">Description</span>
-                                        <p className="mt-1 text-sm text-slate-900 whitespace-pre-line">
-                                          {ticket.incident_details || 'No details provided'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Attachments */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Attachments</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4">
-                                      {parseAttachments(ticket.attachments).length > 0 ? (
-                                        <div className="flex flex-wrap gap-3">
-                                          {parseAttachments(ticket.attachments).map((file, index) => (
-                                            <div 
-                                              key={index}
-                                              className="flex items-center px-3 py-2 rounded-md bg-blue-50 text-blue-700"
-                                            >
-                                              <FileText className="w-4 h-4 mr-2" />
-                                              <span className="text-sm font-medium">{file.split('/').pop()}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-sm text-slate-500">No attachments available</p>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Updates */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Updates</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4">
-                                      <p className="text-sm text-slate-900 whitespace-pre-line">
-                                        {ticket.updates || 'No updates available'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {/* Engineer Assignment */}
-                                  <div>
-                                    <h3 className="text-sm font-medium text-slate-900 mb-3">Assign Engineer</h3>
-                                    <div className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
-                                      <select
-                                        className="w-full border border-slate-300 rounded-md p-2 text-sm"
-                                        value={ticket.assigned_engineer_id ?? ''}
-                                        onChange={async (e) => {
-                                          const engineerId = e.target.value;
-                                          try {
-                                            const response = await fetch(`/api/tickets?ticketId=${ticket.id}`, {
-                                              method: 'PUT',
-                                              headers: {
-                                                'Content-Type': 'application/json',
-                                              },
-                                              body: JSON.stringify({ engineerId }),
-                                            });
-
-                                            if (response.ok) {
-                                              alert("Engineer assigned successfully!");
-
-                                              // Update ticket in local state
-                                              setTickets((prev) =>
-                                                prev.map((t) =>
-                                                  t.id === ticket.id ? { ...t, assigned_engineer_id: engineerId } : t
-                                                )
-                                              );
-                                            }
-                                            else {
-                                              alert("Failed to assign engineer");
-                                            }
-                                          } catch (err) {
-                                            console.error("Assignment error", err);
-                                            alert("Error assigning engineer");
-                                          }
-                                        }}
-                                      >
-                                        <option value="">-- Select Engineer --</option>
-                                        {engineers.map((eng) => (
-                                          <option key={eng.engineer_id} value={eng.engineer_id}>
-                                            {eng.name} ({eng.email_id})
-                                          </option>
-                                        ))}
-                                      </select>
-                                      
-                                    </div>
-                                  </div>
-
-
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                        
                       </React.Fragment>
                     );
                   })}

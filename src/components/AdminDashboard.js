@@ -36,13 +36,14 @@ const AdminDashboard = () => {
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
+    
 
     const statusMap = {
       1: { name: 'Open', color: '#ef4444' },
-      2: { name: 'In Progress', color: '#f59e0b' },
-      3: { name: 'Resolved', color: '#10b981' },
+      2: { name: 'Service Under Progress', color: '#f59e0b' },
+      3: { name: 'Service Completed', color: '#10b981' },
       4: { name: 'Pending', color: '#000050' },
-      5: { name: 'Closed', color: '#6b7280' }
+      5: { name: 'Resolved', color: '#6b7280' }
     };
 
     const formattedData = Object.entries(statusCount).map(([status, count]) => ({

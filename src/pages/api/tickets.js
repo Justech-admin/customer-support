@@ -126,7 +126,15 @@ WHERE
     values,
   });
 
-  return res.status(200).json(tickets);
+  // Get all engineers (for assignment dropdown)
+  const engineers = await executeQuery({
+    query: `SELECT engineer_id, name, email_id FROM engineers`,
+  });
+
+  return res.status(200).json({
+    tickets,
+    engineers,
+});
 }
 
 async function handlePostRequest(req, res, userId) {
@@ -239,7 +247,7 @@ async function handlePutRequest(req, res, userId, userRole, username) {
   }
 
   const { ticketId } = req.query;
-  const { engineerId } = req.body; // ✅ FIX: now defined
+  const { engineerId } = req.body; 
 
   if (!ticketId || !engineerId) {
     return res.status(400).json({ error: "Missing ticketId or engineerId" });
