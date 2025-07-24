@@ -28,10 +28,57 @@ const TicketPreview = () => {
   const [status, setStatus] = useState('');
   const [engineer, setEngineer] = useState('');
   const [engineers, setEngineers] = useState([]);
+  const [engineerName, setEngineerName] = useState("");
   const [loading, setLoading] = useState(true);
   const [engineersLoading, setEngineersLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const defaultEmailMessages = {
+    // "1": "Your ticket has been opened and is under review.",
+    "2": "Your ticket is now being serviced by our team.",
+    "3": "Service has been completed. Please confirm resolution.",
+    "4": "Your ticket is pending due to additional requirements.",
+    "5": "Your ticket has been resolved. Thank you for your patience.",
+  };
+
+  const handleStatusChange = (e) => {
+    const newStatus = e.target.value;
+    setSelectedStatus(newStatus);
+    setEmailBody(defaultEmailMessages[newStatus] || '');
+  };
+
+  const handleSendMail = async () => {
+    try {
+      setIsSendingEmail(true);
+
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateStatusAndNotify', // 🛠️ Required by backend
+          ticketId: ticket.ticket_number,
+          status: selectedStatus,
+          emailBody,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to send email");
+
+      alert('Email sent and status updated!');
+      setStatus(selectedStatus);
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+
+
 
   // Status configuration with colors and icons
   const statusConfig = {
@@ -61,6 +108,8 @@ const TicketPreview = () => {
         setTicket(ticketData);
         setStatus(ticketData.status?.toString() || "1");
         setEngineer(ticketData.assigned_engineer_id?.toString() || "");
+        setEngineerName(ticketData.assigned_engineer_name || "");
+
         
         // Set engineers from the API response
         if (data.engineers) {
@@ -99,6 +148,7 @@ const TicketPreview = () => {
 
       if (!res.ok) throw new Error("Update failed");
       const updated = await res.json();
+      
       
       // Success notification
       const notification = document.createElement('div');
@@ -247,15 +297,36 @@ const TicketPreview = () => {
                 <Clock className="w-5 h-5 mr-2 text-gray-500" />
                 Updates & Notes
               </h2>
-              <div className="bg-gray-50 rounded-lg p-4">
-                {ticket.updates ? (
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {ticket.updates}
-                  </p>
-                ) : (
-                  <p className="text-gray-500 italic">No updates available yet.</p>
-                )}
+              <div className="mt-6 border-t pt-4">
+                <label className="block font-medium text-gray-700 mb-1">Update Ticket Status</label>
+                <select
+                  value={selectedStatus}
+                  onChange={handleStatusChange}
+                  className="w-full border border-gray-300 rounded-lg p-2 mb-3"
+                >
+                  <option value="">Select status</option>
+                  {Object.entries(statusConfig).map(([key, { label }]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+
+                <label className="block font-medium text-gray-700 mb-1">Email Body</label>
+                <textarea
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  rows={5}
+                  className="w-full border border-gray-300 rounded-lg p-3 mb-4"
+                />
+
+                <button
+                  onClick={handleSendMail}
+                  disabled={!selectedStatus || !emailBody || isSendingEmail}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg"
+                >
+                  {isSendingEmail ? 'Sending...' : 'Send Email & Update Status'}
+                </button>
               </div>
+
             </div>
 
             {/* Attachments */}
@@ -300,6 +371,8 @@ const TicketPreview = () => {
                     Assign Engineer
                   </label>
                   <div className="relative">
+                    
+
                     <select
                       value={engineer}
                       onChange={(e) => setEngineer(e.target.value)}

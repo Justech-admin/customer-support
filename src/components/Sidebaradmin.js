@@ -51,10 +51,8 @@ export default function Sidebar() {
 
 const tabs = [
   { id: "AdminDashboard", name: "Dashboard", icon: <FiHome size={20} /> },
-  { id: "Customers", name: "Customer", icon: <FiUsers size={20} /> },
   { id: "Products", name: "Products", icon: <FiPackage size={20} /> },
   { id: "Tickets_admin", name: "Tickets", icon: <FiFileText size={20} /> },
-  { id: "EmailSystem", name: "Email System", icon: <FiMail size={20} /> },
   { id: "Maintenance_admin", name: "Maintenance", icon: <FiTool size={20} /> },
 ];
 

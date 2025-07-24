@@ -14,7 +14,7 @@ const TicketStatusPage = () => {
         const response = await fetch('/api/tickets');
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
-        setTickets(data);
+        setTickets(data.tickets || []);
         setError(null);
       } catch (err) {
         console.error('Error fetching tickets:', err);
@@ -246,6 +246,10 @@ const TicketStatusPage = () => {
                                       <div className="flex justify-between">
                                         <span className="text-sm text-slate-500">Contact</span>
                                         <span className="text-sm font-medium text-slate-900">{ticket.contact_number || 'N/A'}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-sm text-slate-500">Email</span>
+                                        <span className="text-sm font-medium text-slate-900">{ticket.email || 'N/A'}</span>
                                       </div>
                                     </div>
                                   </div>

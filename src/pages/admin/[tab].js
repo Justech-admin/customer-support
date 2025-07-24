@@ -9,9 +9,6 @@ const AdminDashboard = dynamic(() => import("../../components/AdminDashboard"), 
   loading: () => <div className="animate-pulse p-4">Loading dashboard...</div>
 });
 
-const Customers = dynamic(() => import("../../components/Customers"), {
-  loading: () => <div className="animate-pulse p-4">Loading customers...</div>
-});
 
 const Products = dynamic(() => import("../../components/Products"), {
   loading: () => <div className="animate-pulse p-4">Loading Products...</div>
@@ -19,10 +16,6 @@ const Products = dynamic(() => import("../../components/Products"), {
 
 const Tickets_admin = dynamic(() => import("../../components/Tickets_admin"), {
   loading: () => <div className="animate-pulse p-4">Loading Tickets...</div>
-});
-
-const EmailSystem = dynamic(() => import("../../components/EmailSystem"), {
-  loading: () => <div className="animate-pulse p-4">Loading Emails...</div>
 });
 
 const Maintenance_admin = dynamic(() => import("../../components/Maintenance_admin"), {
@@ -67,14 +60,10 @@ function AdminTab({ tokenName }) {
     switch (currentTab) {
       case "AdminDashboard":
         return <AdminDashboard />;
-      case "Customers":
-        return <Customers />;
       case "Products":
         return <Products />;
       case "Tickets_admin":
         return <Tickets_admin />;
-      case "EmailSystem":
-        return <EmailSystem />;
       case "Maintenance_admin":
         return <Maintenance_admin />;
       default:

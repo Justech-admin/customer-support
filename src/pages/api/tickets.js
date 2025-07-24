@@ -11,7 +11,7 @@ import nodemailer from "nodemailer";
 
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: false,
   },
 };
 
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
       case "GET":
         return await handleGetRequest(req, res, userId, userRole,username);
       case "POST":
-        return await handlePostRequest(req, res, userId, userRole,username);
+        return await handlePostRequest(req, res, userId, userRole,username,session);
       case "PUT":
         return await handlePutRequest(req, res, userId, userRole, username);
 
@@ -82,6 +82,8 @@ async function handleGetRequest(req, res, userId, userRole, username) {
       st.created_at, 
       st.designation, 
       st.updates, 
+      st.email,
+      st.assigned_engineer_id,
       l.name AS location, 
       rj.delivery_date, 
       jd.frequencies,
@@ -142,7 +144,7 @@ async function handleGetRequest(req, res, userId, userRole, username) {
 }
 
 
-async function handlePostRequest(req, res, userId) {
+async function handlePostRequest(req, res, userId, userRole, username, session) {
   // Configure file upload
   const uploadDir = path.join(process.cwd(), "public/img/tickets");
   if (!fs.existsSync(uploadDir)) {
@@ -164,6 +166,63 @@ async function handlePostRequest(req, res, userId) {
       resolve([fields, files]);
     });
   });
+
+    // ✅ If admin is sending an update + email
+  if (fields.action === 'updateStatusAndNotify') {
+    const { ticketId, status, emailBody } = fields;
+
+    if (!ticketId || !status || !emailBody) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    try {
+      // Update status in DB
+      const now = new Date().toISOString().split("T")[0]; // get just the date in YYYY-MM-DD
+
+      let timestampField = null;
+      if (status === 'service_under_progress') timestampField = 'service_under_progress_at';
+      else if (status === 'completed') timestampField = 'service_completed_at';
+      else if (status === 'pending') timestampField = 'pending_at';
+      else if (status === 'resolved') timestampField = 'resolved_at';
+
+      let updateQuery = `UPDATE service_tickets SET status = ?, updates = CONCAT(IFNULL(updates, ''), ?)`;
+      const queryParams = [parseInt(status), `\n[Admin ${username}] ${emailBody}`];
+
+      if (timestampField) {
+        updateQuery += `, ${timestampField} = ?`;
+        queryParams.push(now);
+      }
+
+      updateQuery += ` WHERE ticket_number = ?`;
+      queryParams.push(ticketId);
+
+      // Execute the update
+      await executeQuery({
+        query: updateQuery,
+        values: queryParams,
+      });
+
+
+      // Get user email for this ticket
+      const [ticket] = await executeQuery({
+        query: `SELECT email, name FROM service_tickets WHERE ticket_number = ?`,
+        values: [ticketId],
+      });
+
+      if (!ticket?.email) {
+        return res.status(404).json({ error: "Ticket or email not found" });
+      }
+
+      // Send mail
+      await sendStatusUpdateEmail(ticket.email, ticket.name, ticketId, emailBody);
+
+      return res.status(200).json({ message: "Status updated and email sent" });
+    } catch (err) {
+      console.error("Error updating status and sending mail:", err);
+      return res.status(500).json({ error: "Failed to update ticket and send email" });
+    }
+  }
+
 
   // Validate required fields
   if (
@@ -199,8 +258,9 @@ async function handlePostRequest(req, res, userId) {
       attachments,
       created_at,
       name,
-      designation
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(),?,?)
+      designation,
+      email
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(),?,?,?)
   `;
 
   const values = [
@@ -213,22 +273,40 @@ async function handlePostRequest(req, res, userId) {
     1, // Initial status: New
     JSON.stringify(attachments),
     fields.name,
-    fields.designation
+    fields.designation,
+    fields.email
   ];
 
   try {
-    const result = await executeQuery({
-      query,
-      values,
-    });
+  const result = await executeQuery({
+    query,
+    values,
+  });
 
-    return res.status(200).json({
-      message: "Ticket created successfully",
-      ticketId: result.insertId,
-      attachments,
-    });
-  } catch (error) {
-    // Clean up any uploaded files if there's an error
+  // Send acknowledgment email
+  try {
+    const userEmail = session?.user?.email || fields.email; // fallback to form field
+    if (userEmail) {
+      await sendTicketAcknowledgmentEmail(
+        userEmail,
+        fields.name,
+        result.insertId,
+        fields.incidentDetails
+      );
+    } else {
+      console.warn("User email not available for acknowledgment email.");
+    }
+  } catch (mailErr) {
+    console.error("Failed to send acknowledgment email:", mailErr);
+    }
+
+  return res.status(200).json({
+    message: "Ticket created successfully",
+    ticketId: result.insertId,
+    attachments,
+  });
+} catch (error) {
+      // Clean up any uploaded files if there's an error
     if (files.attachments) {
       const fileArray = Array.isArray(files.attachments)
         ? files.attachments
@@ -252,7 +330,31 @@ async function handlePutRequest(req, res, userId, userRole, username) {
   }
 
   const { ticketId } = req.query;
-  const { engineerId } = req.body; 
+
+  // Parse JSON manually
+  const body = await new Promise((resolve, reject) => {
+    let data = "";
+    req.on("data", chunk => {
+      data += chunk;
+    });
+    req.on("end", () => {
+      try {
+        const parsed = JSON.parse(data);
+        resolve(parsed);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+
+  const { engineerId } = body;
+
+  if (!ticketId || !engineerId) {
+    return res.status(400).json({ error: "Missing ticketId or engineerId" });
+  }
+
+
+
 
   if (!ticketId || !engineerId) {
     return res.status(400).json({ error: "Missing ticketId or engineerId" });
@@ -261,7 +363,7 @@ async function handlePutRequest(req, res, userId, userRole, username) {
   try {
     // Update ticket with engineer
     await executeQuery({
-      query: `UPDATE service_tickets SET assigned_engineer_id = ? WHERE id = ?`,
+      query: `UPDATE service_tickets SET assigned_engineer_id = ? WHERE ticket_number = ?`,
       values: [engineerId, ticketId],
     });
 
@@ -308,6 +410,59 @@ async function sendAssignmentEmail(toEmail, engineerName, ticketId) {
       <p>Please log in to the portal to view and resolve it.</p>
       <p>Regards,<br/>Support Team</p>
     `
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+
+async function sendTicketAcknowledgmentEmail(toEmail, userName, ticketId, incidentDetails) {
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Support Team" <${process.env.SMTP_EMAIL}>`,
+    to: toEmail,
+    subject: `Ticket #${ticketId} Received - Confirmation`,
+    html: `
+      <p>Dear ${userName},</p>
+      <p>Your service ticket <strong>#${ticketId}</strong> has been successfully received.</p>
+      <p><strong>Issue Reported:</strong> ${incidentDetails}</p>
+      <p>Our support team will attend to this issue at the earliest.</p>
+      <p>Thank you for reaching out to us.</p>
+      <p>Regards,<br/>Support Team</p>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+
+async function sendStatusUpdateEmail(toEmail, userName, ticketId, message) {
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: `"Support Team" <${process.env.SMTP_EMAIL}>`,
+    to: toEmail,
+    subject: `Update on Ticket #${ticketId}`,
+    html: `
+      <p>Dear ${userName},</p>
+      <p>There has been an update on your ticket <strong>#${ticketId}</strong>:</p>
+      <blockquote>${message}</blockquote>
+      <p>We will continue to keep you informed.</p>
+      <p>Regards,<br/>Support Team</p>
+    `,
   };
 
   await transporter.sendMail(mailOptions);
