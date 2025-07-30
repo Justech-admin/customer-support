@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     let query = `
       SELECT 
         rj.serial_number, 
-        rj.status, 
+        rj.client_status, 
         rj.type, 
         rj.manufacturing_date,
         rj.delivery_date,
