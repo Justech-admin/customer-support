@@ -54,6 +54,8 @@ const tabs = [
   { id: "Products", name: "Products", icon: <FiPackage size={20} /> },
   { id: "Tickets_admin", name: "Tickets", icon: <FiFileText size={20} /> },
   { id: "Maintenance_admin", name: "Maintenance", icon: <FiTool size={20} /> },
+  { id: "users", name: "Users", icon: <FiUsers size={20} /> },
+
 ];
 
   return (

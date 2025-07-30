@@ -31,6 +31,7 @@ const JammerPreview = ({ tokenName }) => {
     comments: "",
     signature: "",
     name: "",
+    designation: "",
     date: ""
   });
 
@@ -58,8 +59,7 @@ const JammerPreview = ({ tokenName }) => {
           throw new Error("Jammer not found");
         }
         setJammerData(data[0]);
-        
-        // Set jammer details in form data
+
         setFormData(prev => ({
           ...prev,
           jammerDetails: data[0].type || "",
@@ -93,11 +93,37 @@ const JammerPreview = ({ tokenName }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission - you can add your submission logic here
-    console.log("Form submitted:", formData);
-    // Maybe navigate or show a success message
+    try {
+      const payload = {
+        type: "physical",
+        inspectionDate: new Date().toISOString().split("T")[0],
+        serialNumber: formData.serialNumber,
+        checklistItems: formData.checklistItems,
+        comments: formData.comments,
+        name: formData.name,
+        designation: formData.designation
+      };
+
+      const response = await fetch("/api/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit data");
+      }
+
+      alert("Inspection record submitted successfully");
+      router.push(`/${username}/Inventory`);
+    } catch (error) {
+      console.error("Submit Error:", error);
+      alert("Failed to submit form");
+    }
   };
 
   if (loading) {
@@ -115,6 +141,7 @@ const JammerPreview = ({ tokenName }) => {
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen">

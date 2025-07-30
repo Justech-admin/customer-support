@@ -22,7 +22,6 @@ const MaintenanceTracker = () => {
     const today = new Date();
     let nextDate = new Date(today.getFullYear(), today.getMonth(), 7);
 
-    // If today is after the 7th, schedule for next month
     if (today.getDate() > 7) {
       nextDate.setMonth(nextDate.getMonth() + 1);
     }
@@ -34,17 +33,11 @@ const MaintenanceTracker = () => {
     const today = new Date();
     const currentDay = today.getDate();
 
-    // Always calculate next maintenance date as 7th of current/next month
-    let nextMaintenanceDate = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      7
-    );
+    let nextMaintenanceDate = new Date(today.getFullYear(), today.getMonth(), 7);
     if (currentDay > 7) {
       nextMaintenanceDate.setMonth(nextMaintenanceDate.getMonth() + 1);
     }
 
-    // If maintenance was done this month
     if (lastDate) {
       const lastMaintenanceDate = new Date(lastDate);
       if (
@@ -54,16 +47,14 @@ const MaintenanceTracker = () => {
         if (currentDay <= 25) {
           return "completed";
         }
-        // After 25th, start showing next month's schedule
-        return "in-progress"; // Shows as "Scheduled"
+        return "in-progress";
       }
     }
 
-    // For scheduling next maintenance
     if (currentDay >= 1 && currentDay <= 7) {
-      return "upcoming"; // Shows as "Due Soon"
+      return "upcoming";
     } else if (currentDay > 25) {
-      return "in-progress"; // Shows as "Scheduled"
+      return "in-progress";
     } else {
       return currentDay > 7 ? "overdue" : "in-progress";
     }
@@ -75,7 +66,6 @@ const MaintenanceTracker = () => {
         const response = await fetch("/api/maintenance");
         const data = await response.json();
 
-        // Transform the API data
         const transformedData = data.map((item) => {
           const nextDueDate = getNextMaintenanceDate();
 
@@ -85,9 +75,7 @@ const MaintenanceTracker = () => {
             locationName: item.locationName,
             maintenanceStatus: {
               functional: {
-                status: calculateMaintenanceStatus(
-                  item.functionalMaintenanceDate
-                ),
+                status: calculateMaintenanceStatus(item.functionalMaintenanceDate),
                 lastDate: item.functionalMaintenanceDate,
                 nextDueDate: nextDueDate,
               },
@@ -97,9 +85,7 @@ const MaintenanceTracker = () => {
                 nextDueDate: nextDueDate,
               },
               physical: {
-                status: calculateMaintenanceStatus(
-                  item.physicalMaintenanceDate
-                ),
+                status: calculateMaintenanceStatus(item.physicalMaintenanceDate),
                 lastDate: item.physicalMaintenanceDate,
                 nextDueDate: nextDueDate,
               },
@@ -107,10 +93,9 @@ const MaintenanceTracker = () => {
           };
         });
 
-        // Extract unique locations
-        const uniqueLocations = [...new Set(data.map(item => item.locationName))];
+        const uniqueLocations = [...new Set(data.map((item) => item.locationName))];
         setLocations(uniqueLocations);
-        
+
         setProducts(transformedData);
         setFilteredProducts(transformedData);
       } catch (error) {
@@ -127,17 +112,13 @@ const MaintenanceTracker = () => {
     if (searchTerm) {
       result = result.filter(
         (product) =>
-          product.serialNumber
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
+          product.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product.locationName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (locationFilter !== "all") {
-      result = result.filter(
-        (product) => product.locationName === locationFilter
-      );
+      result = result.filter((product) => product.locationName === locationFilter);
     }
 
     setFilteredProducts(result);
@@ -170,28 +151,31 @@ const MaintenanceTracker = () => {
           </span>
         );
       case "none":
-        return (
-          <span className="flex items-center text-gray-400">Not Required</span>
-        );
+        return <span className="flex items-center text-gray-400">Not Required</span>;
       default:
         return <span>{status}</span>;
     }
   };
 
+  const formatDate = (dateStr) => {
+    return dateStr
+      ? new Date(dateStr).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "numeric",
+          year: "numeric",
+        })
+      : "Never";
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">
-        Maintenance Tracking Dashboard
-      </h1>
+      <h1 className="text-2xl font-bold mb-6">Maintenance Tracking Dashboard</h1>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={18}
-              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Search devices by serial number or location..."
@@ -212,8 +196,10 @@ const MaintenanceTracker = () => {
                 onChange={(e) => setLocationFilter(e.target.value)}
               >
                 <option value="all">All Locations</option>
-                {locations.map(location => (
-                  <option key={location} value={location}>{location}</option>
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
                 ))}
               </select>
             </div>
@@ -226,96 +212,47 @@ const MaintenanceTracker = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Device Info
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Location
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Functional Test
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Battery Maintenance
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Physical Inspection
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Action
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device Info</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Functional Test</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery Maintenance</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Physical Inspection</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProducts.map((product) => (
                 <tr key={product.serialNumber} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900">
-                      {product.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Serial No.: {product.serialNumber}
-                    </div>
+                    <div className="font-medium text-gray-900">{product.name}</div>
+                    <div className="text-sm text-gray-500">Serial No.: {product.serialNumber}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {product.locationName}
-                    </div>
+                    <div className="text-sm text-gray-900">{product.locationName}</div>
                   </td>
 
-                  {/* Functional Test Status */}
+                  {/* Functional Test */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="mb-1">
-                      {getStatusIndicator(
-                        product.maintenanceStatus.functional.status
-                      )}
-                    </div>
+                    <div className="mb-1">{getStatusIndicator(product.maintenanceStatus.functional.status)}</div>
                     {product.maintenanceStatus.functional.status !== "none" && (
                       <>
                         <div className="text-xs text-gray-500">
-                          Last:{" "}
-                          {product.maintenanceStatus.functional.lastDate ||
-                            "Never"}
+                          Last: {formatDate(product.maintenanceStatus.functional.lastDate)}
                         </div>
                         <div className="text-xs font-medium">
-                          Next:{" "}
-                          {product.maintenanceStatus.functional.nextDueDate}
+                          Next: {product.maintenanceStatus.functional.nextDueDate}
                         </div>
                       </>
                     )}
                   </td>
 
-                  {/* Battery Maintenance Status */}
+                  {/* Battery Maintenance */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="mb-1">
-                      {getStatusIndicator(
-                        product.maintenanceStatus.battery.status
-                      )}
-                    </div>
+                    <div className="mb-1">{getStatusIndicator(product.maintenanceStatus.battery.status)}</div>
                     {product.maintenanceStatus.battery.status !== "none" && (
                       <>
                         <div className="text-xs text-gray-500">
-                          Last:{" "}
-                          {product.maintenanceStatus.battery.lastDate ||
-                            "Never"}
+                          Last: {formatDate(product.maintenanceStatus.battery.lastDate)}
                         </div>
                         <div className="text-xs font-medium">
                           Next: {product.maintenanceStatus.battery.nextDueDate}
@@ -324,19 +261,13 @@ const MaintenanceTracker = () => {
                     )}
                   </td>
 
-                  {/* Physical Inspection Status */}
+                  {/* Physical Inspection */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="mb-1">
-                      {getStatusIndicator(
-                        product.maintenanceStatus.physical.status
-                      )}
-                    </div>
+                    <div className="mb-1">{getStatusIndicator(product.maintenanceStatus.physical.status)}</div>
                     {product.maintenanceStatus.physical.status !== "none" && (
                       <>
                         <div className="text-xs text-gray-500">
-                          Last:{" "}
-                          {product.maintenanceStatus.physical.lastDate ||
-                            "Never"}
+                          Last: {formatDate(product.maintenanceStatus.physical.lastDate)}
                         </div>
                         <div className="text-xs font-medium">
                           Next: {product.maintenanceStatus.physical.nextDueDate}
@@ -345,6 +276,7 @@ const MaintenanceTracker = () => {
                     )}
                   </td>
 
+                  {/* Action buttons */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button className="text-blue-600 hover:text-blue-900 mb-2 block">
                       View Maintenance History
@@ -353,38 +285,26 @@ const MaintenanceTracker = () => {
                       <button
                         className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                         onClick={() => {
-                          const encodedSerialNumber = encodeURIComponent(
-                            product.serialNumber
-                          );
-                          router.push(
-                            `/${router.query.username}/Maintenance/functional/${encodedSerialNumber}`
-                          );
+                          const encodedSerialNumber = encodeURIComponent(product.serialNumber);
+                          router.push(`/${router.query.username}/Maintenance/functional/${encodedSerialNumber}`);
                         }}
                       >
                         Perform Functional Test
                       </button>
-                      <button 
+                      <button
                         className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                         onClick={() => {
-                          const encodedSerialNumber = encodeURIComponent(
-                            product.serialNumber
-                          );
-                          router.push(
-                            `/${router.query.username}/Maintenance/battery/${encodedSerialNumber}`
-                          );
+                          const encodedSerialNumber = encodeURIComponent(product.serialNumber);
+                          router.push(`/${router.query.username}/Maintenance/battery/${encodedSerialNumber}`);
                         }}
                       >
                         Perform Battery Maintenance
                       </button>
-                      <button 
+                      <button
                         className="text-sm py-1 px-2 rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                         onClick={() => {
-                          const encodedSerialNumber = encodeURIComponent(
-                            product.serialNumber
-                          );
-                          router.push(
-                            `/${router.query.username}/Maintenance/physical/${encodedSerialNumber}`
-                          );
+                          const encodedSerialNumber = encodeURIComponent(product.serialNumber);
+                          router.push(`/${router.query.username}/Maintenance/physical/${encodedSerialNumber}`);
                         }}
                       >
                         Perform Physical Inspection
@@ -400,12 +320,9 @@ const MaintenanceTracker = () => {
         {filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              No results found
-            </h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No results found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Try adjusting your search or filter to find what you're looking
-              for.
+              Try adjusting your search or filter to find what you're looking for.
             </p>
           </div>
         )}

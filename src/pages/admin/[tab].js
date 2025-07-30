@@ -22,6 +22,9 @@ const Maintenance_admin = dynamic(() => import("../../components/Maintenance_adm
   loading: () => <div className="animate-pulse p-4">Loading Maintenance details...</div>
 });
 
+const UsersPage = dynamic(() => import("../../components/users"), {
+  loading: () => <div className="animate-pulse p-4">Loading Users...</div>
+});
 
 
 const Sidebaradmin = dynamic(() => import("../../components/Sidebaradmin"), {
@@ -66,6 +69,8 @@ function AdminTab({ tokenName }) {
         return <Tickets_admin />;
       case "Maintenance_admin":
         return <Maintenance_admin />;
+      case "users":
+        return <UsersPage />;
       default:
         return (
           <div className="flex items-center justify-center h-full">

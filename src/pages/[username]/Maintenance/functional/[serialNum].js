@@ -11,7 +11,7 @@ const JammerPreview = ({ tokenName }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    maintenanceDate: "",
+    maintenanceDate: new Date().toISOString().split("T")[0],
     jammerType: "",
     model: "",
     serialNumber: serialNum || "",
@@ -24,7 +24,7 @@ const JammerPreview = ({ tokenName }) => {
     },
     comments: "",
     name: "",
-    designation: ""
+    designation: "",
   });
 
   useEffect(() => {
@@ -37,8 +37,8 @@ const JammerPreview = ({ tokenName }) => {
           `/api/maintenance?serial_number=${serialNum}`,
           {
             headers: {
-              'Content-Type': 'application/json',
-            }
+              "Content-Type": "application/json",
+            },
           }
         );
 
@@ -51,13 +51,12 @@ const JammerPreview = ({ tokenName }) => {
           throw new Error("Jammer not found");
         }
         setJammerData(data[0]);
-        
-        // Set jammer details in form data
-        setFormData(prev => ({
+
+        setFormData((prev) => ({
           ...prev,
-          jammerDetails: data[0].type || "",
+          jammerType: data[0].jammerType || "",
           location: data[0].locationName || "",
-          serialNumber: serialNum
+          serialNumber: serialNum,
         }));
       } catch (err) {
         setError(err.message);
@@ -69,39 +68,58 @@ const JammerPreview = ({ tokenName }) => {
     fetchJammerData();
   }, [serialNum]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleCheckboxChange = (item) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       checklistItems: {
         ...prev.checklistItems,
-        [item]: !prev.checklistItems[item]
-      }
+        [item]: !prev.checklistItems[item],
+      },
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle form submission - you can add your submission logic here
-    console.log("Form submitted:", formData);
-    // Maybe navigate or show a success message
+
+    const payload = {
+      type: "functional",
+      maintenanceDate: formData.maintenanceDate,
+      serialNumber: formData.serialNumber,
+      checklistItems: formData.checklistItems,
+      comments: formData.comments,
+      name: formData.name,
+      designation: formData.designation,
+    };
+
+    try {
+      const res = await fetch("/api/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Failed to submit form");
+      }
+
+      alert("Submitted successfully!");
+      router.push(`/${username}/Inventory`);
+    } catch (err) {
+      console.error("Form Submission Error:", err);
+      alert(err.message);
+    }
   };
 
   if (loading) {
@@ -128,12 +146,12 @@ const JammerPreview = ({ tokenName }) => {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Monthly Functional Test Form */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-6 text-center underline">MONTHLY FUNCTIONAL TEST FORM</h2>
-            
+            <h2 className="text-xl font-semibold mb-6 text-center underline">
+              MONTHLY FUNCTIONAL TEST FORM
+            </h2>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-
                 <div className="flex items-center space-x-2">
                   <label className="font-semibold w-36">Serial Number:</label>
                   <input
@@ -150,7 +168,11 @@ const JammerPreview = ({ tokenName }) => {
                   <input
                     type="text"
                     name="model"
-                    value={jammerData?.serialNumber ? jammerData.serialNumber.slice(0, -4) : formData.serialNumber.slice(0, -4)}
+                    value={
+                      jammerData?.serialNumber
+                        ? jammerData.serialNumber.slice(0, -4)
+                        : formData.serialNumber.slice(0, -4)
+                    }
                     readOnly
                     className="flex-1 border rounded p-2 bg-gray-50"
                   />
@@ -166,7 +188,7 @@ const JammerPreview = ({ tokenName }) => {
                     className="flex-1 border rounded p-2 bg-gray-50"
                   />
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <label className="font-semibold w-36">Location:</label>
                   <input
@@ -178,9 +200,11 @@ const JammerPreview = ({ tokenName }) => {
                   />
                 </div>
               </div>
-              
-              <h2 className="text-xl font-semibold mt-8 mb-4">Functional Inspection Checklist:</h2>
-              
+
+              <h2 className="text-xl font-semibold mt-8 mb-4">
+                Functional Inspection Checklist:
+              </h2>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200">
                   <thead>
@@ -194,9 +218,15 @@ const JammerPreview = ({ tokenName }) => {
                   <tbody>
                     {/* Power On/Off Section */}
                     <tr>
-                      <td className="border p-3 text-center" rowSpan="2">1</td>
-                      <td className="border p-3" rowSpan="2">Power On/Off</td>
-                      <td className="border p-3">Device powers on and off correctly.</td>
+                      <td className="border p-3 text-center" rowSpan="2">
+                        1
+                      </td>
+                      <td className="border p-3" rowSpan="2">
+                        Power On/Off
+                      </td>
+                      <td className="border p-3">
+                        Device powers on and off correctly.
+                      </td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -207,7 +237,9 @@ const JammerPreview = ({ tokenName }) => {
                       </td>
                     </tr>
                     <tr>
-                      <td className="border p-3">Power trigger button functions smoothly.</td>
+                      <td className="border p-3">
+                        Power trigger button functions smoothly.
+                      </td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -217,12 +249,18 @@ const JammerPreview = ({ tokenName }) => {
                         />
                       </td>
                     </tr>
-                    
+
                     {/* Jamming Performance Section */}
                     <tr>
-                      <td className="border p-3 text-center" rowSpan="2">2</td>
-                      <td className="border p-3" rowSpan="2">Jamming Performance</td>
-                      <td className="border p-3">Jamming function activates as expected.</td>
+                      <td className="border p-3 text-center" rowSpan="2">
+                        2
+                      </td>
+                      <td className="border p-3" rowSpan="2">
+                        Jamming Performance
+                      </td>
+                      <td className="border p-3">
+                        Jamming function activates as expected.
+                      </td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -233,7 +271,9 @@ const JammerPreview = ({ tokenName }) => {
                       </td>
                     </tr>
                     <tr>
-                      <td className="border p-3">Jamming range is consistent with specifications.</td>
+                      <td className="border p-3">
+                        Jamming range is consistent with specifications.
+                      </td>
                       <td className="border p-3 text-center">
                         <input
                           type="checkbox"
@@ -246,7 +286,7 @@ const JammerPreview = ({ tokenName }) => {
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="mt-6">
                 <label className="font-semibold block mb-2">Comments:</label>
                 <textarea
@@ -256,7 +296,7 @@ const JammerPreview = ({ tokenName }) => {
                   className="w-full border rounded p-2 h-24"
                 ></textarea>
               </div>
-              
+
               {/* Name and Designation fields */}
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-center space-x-2">
@@ -269,7 +309,7 @@ const JammerPreview = ({ tokenName }) => {
                     className="flex-1 border rounded p-2"
                   />
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <label className="font-semibold w-36">Designation:</label>
                   <input
@@ -281,7 +321,7 @@ const JammerPreview = ({ tokenName }) => {
                   />
                 </div>
               </div>
-              
+
               <div className="mt-8 flex justify-end space-x-4">
                 <button
                   type="button"
