@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import authOptions from "./auth/[...nextauth]";
 import { executeQuery } from "@/lib/db";
 
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method Not Allowed" });
@@ -33,6 +34,7 @@ export default async function handler(req, res) {
     // Base SQL Query
     let query = `
       SELECT 
+        rj.user_id,
         rj.serial_number, 
         rj.status, 
         rj.type, 

@@ -59,7 +59,7 @@ const TicketPreview = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'updateStatusAndNotify', // 🛠️ Required by backend
+          action: 'updateStatusAndNotify',
           ticketId: ticket.ticket_number,
           status: selectedStatus,
           emailBody,
@@ -127,6 +127,8 @@ const TicketPreview = () => {
     fetchData();
   }, [ticketNum]);
 
+
+
   // Assign engineer
   const handleUpdate = async () => {
     if (!engineer) {
@@ -136,6 +138,7 @@ const TicketPreview = () => {
 
     try {
       setIsUpdating(true);
+
       const res = await fetch(`/api/tickets?ticketId=${ticketNum}`, {
         method: 'PUT',
         headers: {
@@ -147,6 +150,7 @@ const TicketPreview = () => {
       });
 
       if (!res.ok) throw new Error("Update failed");
+      
       const updated = await res.json();
       
       
@@ -156,9 +160,9 @@ const TicketPreview = () => {
       notification.textContent = 'Engineer assigned successfully!';
       document.body.appendChild(notification);
       setTimeout(() => document.body.removeChild(notification), 3000);
-      
+
     } catch (err) {
-      // Error notification
+      // ❌ Error notification
       const notification = document.createElement('div');
       notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
       notification.textContent = `Error: ${err.message}`;
@@ -168,6 +172,9 @@ const TicketPreview = () => {
       setIsUpdating(false);
     }
   };
+
+
+ 
 
   const InfoCard = ({ icon: Icon, label, value, className = "" }) => (
     <div className={`bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow ${className}`}>
@@ -310,13 +317,43 @@ const TicketPreview = () => {
                   ))}
                 </select>
 
-                <label className="block font-medium text-gray-700 mb-1">Email Body</label>
+                <label className="block font-medium text-gray-700 ">Email Body</label>
                 <textarea
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
                   rows={5}
                   className="w-full border border-gray-300 rounded-lg p-3 mb-4"
                 />
+
+                <div className="my-6 ">
+                  <h3 className="text-md font-medium text-gray-800 mb-2">Status Timeline</h3>
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    <li>
+                      <span className="font-semibold">Ticket Created:</span> {new Date(ticket.created_at).toLocaleString()}
+                    </li>
+                    {ticket.service_under_progress_at && (
+                      <li>
+                        <span className="font-semibold">Service Under Progress:</span> {new Date(ticket.service_under_progress_at).toLocaleString()}
+                      </li>
+                    )}
+                    {ticket.service_completed_at && (
+                      <li>
+                        <span className="font-semibold">Service Completed:</span> {new Date(ticket.service_completed_at).toLocaleString()}
+                      </li>
+                    )}
+                    {ticket.pending_at && (
+                      <li>
+                        <span className="font-semibold">Pending:</span> {new Date(ticket.pending_at).toLocaleString()}
+                      </li>
+                    )}
+                    {ticket.resolved_at && (
+                      <li>
+                        <span className="font-semibold">Resolved:</span> {new Date(ticket.resolved_at).toLocaleString()}
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
 
                 <button
                   onClick={handleSendMail}

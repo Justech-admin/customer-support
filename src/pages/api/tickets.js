@@ -80,6 +80,10 @@ async function handleGetRequest(req, res, userId, userRole, username) {
       st.attachments, 
       st.name AS reporter, 
       st.created_at, 
+      st.service_under_progress_at,
+      st.service_completed_at,
+      st.pending_at,
+      st.resolved_at,
       st.designation, 
       st.updates, 
       st.email,
@@ -177,13 +181,20 @@ async function handlePostRequest(req, res, userId, userRole, username, session) 
 
     try {
       // Update status in DB
-      const now = new Date().toISOString().split("T")[0]; // get just the date in YYYY-MM-DD
+      const now = new Date();
+      const formattedLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-      let timestampField = null;
-      if (status === 'service_under_progress') timestampField = 'service_under_progress_at';
-      else if (status === 'completed') timestampField = 'service_completed_at';
-      else if (status === 'pending') timestampField = 'pending_at';
-      else if (status === 'resolved') timestampField = 'resolved_at';
+ 
+
+      const statusToTimestampField = {
+        "2": "service_under_progress_at",
+        "3": "service_completed_at",
+        "4": "pending_at",
+        "5": "resolved_at",
+      };
+
+      const timestampField = statusToTimestampField[status];
+
 
       let updateQuery = `UPDATE service_tickets SET status = ?, updates = CONCAT(IFNULL(updates, ''), ?)`;
       const queryParams = [parseInt(status), `\n[Admin ${username}] ${emailBody}`];
@@ -216,7 +227,24 @@ async function handlePostRequest(req, res, userId, userRole, username, session) 
       // Send mail
       await sendStatusUpdateEmail(ticket.email, ticket.name, ticketId, emailBody);
 
-      return res.status(200).json({ message: "Status updated and email sent" });
+      const [updatedTicket] = await executeQuery({
+      query: `
+        SELECT 
+          st.*, 
+          e.name AS assigned_engineer_name, 
+          e.email_id AS assigned_engineer_email
+        FROM service_tickets st
+        LEFT JOIN engineers e ON st.assigned_engineer_id = e.engineer_id
+        WHERE st.ticket_number = ?
+      `,
+      values: [ticketId],
+    });
+
+    return res.status(200).json({
+      message: "Status updated and email sent",
+      ticket: updatedTicket,
+    });
+
     } catch (err) {
       console.error("Error updating status and sending mail:", err);
       return res.status(500).json({ error: "Failed to update ticket and send email" });
@@ -324,6 +352,7 @@ async function handlePostRequest(req, res, userId, userRole, username, session) 
   }
 }
 
+
 async function handlePutRequest(req, res, userId, userRole, username) {
   if (userRole !== "admin") {
     return res.status(403).json({ error: "Only admin can assign engineers" });
@@ -354,12 +383,6 @@ async function handlePutRequest(req, res, userId, userRole, username) {
   }
 
 
-
-
-  if (!ticketId || !engineerId) {
-    return res.status(400).json({ error: "Missing ticketId or engineerId" });
-  }
-
   try {
     // Update ticket with engineer
     await executeQuery({
@@ -382,13 +405,29 @@ async function handlePutRequest(req, res, userId, userRole, username) {
     // Send email notification
     await sendAssignmentEmail(email_id, name, ticketId);
 
-    return res.status(200).json({ message: "Engineer assigned and notified" });
+    const [updatedTicket] = await executeQuery({
+      query: `
+        SELECT 
+          st.*, 
+          e.name AS assigned_engineer_name, 
+          e.email_id AS assigned_engineer_email
+        FROM service_tickets st
+        LEFT JOIN engineers e ON st.assigned_engineer_id = e.engineer_id
+        WHERE st.ticket_number = ?
+      `,
+      values: [ticketId],
+    });
+
+return res.status(200).json({
+  message: "Engineer assigned and notified",
+  ticket: updatedTicket,
+});
+
   } catch (error) {
     console.error("Error in engineer assignment:", error);
     return res.status(500).json({ error: "Failed to assign engineer" });
   }
 }
-
 
 
 async function sendAssignmentEmail(toEmail, engineerName, ticketId) {

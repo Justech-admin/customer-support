@@ -10,6 +10,33 @@ const AdminDashboard = () => {
   const [ticketView, setTicketView] = useState("monthly");
   const [locationTicketData, setLocationTicketData] = useState([]);
   const [frequentIssuesData, setFrequentIssuesData] = useState([]);
+  const [medianResolutionTime, setMedianResolutionTime] = useState(null);
+
+
+  //median time
+  useEffect(() => {
+    const resolutionTimes = allTickets
+      .filter(ticket => ticket.resolved_at && ticket.created_at)
+      .map(ticket => {
+        const createdAt = new Date(ticket.created_at);
+        const resolvedAt = new Date(ticket.resolved_at);
+        return (resolvedAt - createdAt) / (1000 * 60 * 60 * 24); // Convert ms to days
+      })
+      .sort((a, b) => a - b); // Sort for median
+
+    if (resolutionTimes.length === 0) {
+      setMedianResolutionTime(null);
+      return;
+    }
+
+    const mid = Math.floor(resolutionTimes.length / 2);
+    const median = resolutionTimes.length % 2 !== 0
+      ? resolutionTimes[mid]
+      : (resolutionTimes[mid - 1] + resolutionTimes[mid]) / 2;
+
+    setMedianResolutionTime(median.toFixed(1));
+  }, [allTickets]);
+
 
 
   //Fetch all tickets
@@ -163,8 +190,18 @@ const AdminDashboard = () => {
     // sort keys chronologically
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
       if (view === "financial") return a.localeCompare(b); // FY sorting
-      return new Date(a) - new Date(b);
+
+      if (view === "quarterly") {
+        const parseQuarter = (q) => {
+          const [qtr, year] = q.split(" ");
+          return new Date(`${year}-${(parseInt(qtr[1]) - 1) * 3 + 1}-01`);
+        };
+        return parseQuarter(a) - parseQuarter(b);
+      }
+
+      return new Date(a) - new Date(b); // monthly or last6months
     });
+
 
     let data = sortedKeys.map(k => ({
       month: k,
@@ -227,7 +264,7 @@ const AdminDashboard = () => {
          />
          <StatCard 
             title="Median Resolution Time" 
-            value="6.5 days" 
+            value={medianResolutionTime !== null ? `${medianResolutionTime} days` : 'N/A'} 
             subtitle="Across resolved tickets"
             icon={Clock} 
             color="yellow" 
@@ -306,10 +343,13 @@ const AdminDashboard = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({name, percent}) => `${name}\n`+percent*100+`%`}
+                  label={({ name, percent }) => `${name}`}
+                  // label={({ name, percent }) => `${name}\n${(percent * 100).toFixed(2)}%`}
+
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  isAnimationActive={false} 
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
