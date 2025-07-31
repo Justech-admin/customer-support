@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       SELECT 
         rj.user_id,
         rj.serial_number, 
-        rj.status, 
+        rj.client_status, 
         rj.type, 
         rj.manufacturing_date,
         rj.delivery_date,
