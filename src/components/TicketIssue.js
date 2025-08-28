@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 
 export default function TicketFormPreview() {
@@ -8,6 +8,10 @@ export default function TicketFormPreview() {
   const [selectedJammer, setSelectedJammer] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [jammers, setJammers] = useState([]);
+  
+  // Use useRef to prevent duplicate generation
+  const ticketGenerated = useRef(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     designation: '',
@@ -30,18 +34,35 @@ export default function TicketFormPreview() {
       }
     };
 
-    generateTicketNumber();
+    // Only generate ticket number once using useRef
+    if (!ticketGenerated.current) {
+      const generatedNumber = generateTicketNumber();
+      console.log('Generated in useEffect:', generatedNumber);
+      ticketGenerated.current = true;
+    }
+    
     fetchJammers();
-  }, []);
+  }, []); // Empty dependency array is fine now
 
   const generateTicketNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const newTicketNumber = `TKT-${year}${month}-${randomNum}`;
-    setTicketNumber(newTicketNumber);
-  };
+  console.log('🔥 CORRECT generateTicketNumber function called!');
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const randomNum = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  const ticketNumber = `TKT-${year}${month}${day}-${hours}${minutes}${seconds}-${randomNum}`;
+  
+  console.log('✅ Generated ticket number:', ticketNumber);
+  
+  setTicketNumber(ticketNumber);
+  return ticketNumber;
+};
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -78,7 +99,6 @@ export default function TicketFormPreview() {
       alert('Please select a date from today or earlier');
     }
   };
-  
 
   const filteredJammers = jammers.filter(jammer => {
     const serial = jammer.serial_number.toLowerCase();
@@ -118,6 +138,14 @@ export default function TicketFormPreview() {
       return;
     }
 
+    // Double-check we have a ticket number
+    if (!ticketNumber) {
+      alert('Error: No ticket number generated. Please refresh and try again.');
+      return;
+    }
+
+    console.log('Submitting with ticket number:', ticketNumber); // Debug log
+
     const submitData = new FormData();
     submitData.append('ticketNumber', ticketNumber);
     submitData.append('name', formData.name.trim());
@@ -141,12 +169,22 @@ export default function TicketFormPreview() {
       
       if (!response.ok) {
         const data = await response.json();
+        
+        // If it's a duplicate entry error, regenerate ticket number and retry
+        if (data.error && data.error.includes('Duplicate entry')) {
+          console.log('Duplicate ticket number detected, regenerating...');
+          ticketGenerated.current = false; // Reset the flag
+          generateTicketNumber();
+          alert('Ticket number collision detected. Please try submitting again.');
+          return;
+        }
+        
         throw new Error(data.error || 'Error creating ticket');
       }
 
       const result = await response.json();
       alert('Ticket created successfully!');
-      router.push(`/${router.query.username}/Tickets`); // Updated to new tickets page
+      router.push(`/${router.query.username}/Tickets`);
     } catch (error) {
       console.error('Error submitting form:', error);
       alert(error.message || 'Error submitting ticket');
@@ -161,12 +199,13 @@ export default function TicketFormPreview() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
-        <div className="bg-gray-50 p-0 rounded-lg">
+        <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center">
             <span className="text-xl font-bold text-gray-700">Ticket Number:</span>
-            <span className="ml-2 font-mono text-blue-600">{ticketNumber}</span>
+            <span className="ml-2 font-mono text-blue-600">{ticketNumber || 'Generating...'}</span>
           </div>
         </div>
+        
         <div className="bg-blue-50 p-4 rounded-lg space-y-4">
           <h2 className="font-semibold text-blue-900">Jammer Details</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -236,7 +275,6 @@ export default function TicketFormPreview() {
                 required 
               />
             </div>
-            
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -276,8 +314,6 @@ export default function TicketFormPreview() {
           </div>
         </div>
 
-        
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Incident Date *</label>
           <input 
@@ -285,7 +321,7 @@ export default function TicketFormPreview() {
             name="incidentDate"
             value={formData.incidentDate} 
             onChange={handleIncidentDateChange}
-            max={new Date().toISOString().split('T')[-1]}
+            max={new Date().toISOString().split('T')[0]}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
             required 
           />
@@ -326,6 +362,7 @@ export default function TicketFormPreview() {
           <button 
             type="submit" 
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={!ticketNumber}
           >
             Submit Ticket
           </button>

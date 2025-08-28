@@ -1,219 +1,125 @@
-import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Calendar, AlertTriangle, CheckCircle, Clock, Filter, Activity, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { Activity, TrendingUp } from 'lucide-react';
 
 const MaintenanceDashboard = () => {
-  const [selectedMaintenanceType, setSelectedMaintenanceType] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [timeRange, setTimeRange] = useState('3month'); // '3month', '6month', '1year', 'all'
+  const [timeRange, setTimeRange] = useState('3month');
+  const [loading, setLoading] = useState(true);
+  const [maintenanceData, setMaintenanceData] = useState([]);
+  const [totalJammers, setTotalJammers] = useState(0);
 
-  // Sample data - replace with your actual data
-  const sampleData = {
-    batteryMaintenance: [
-      { id: 1, serial_number: 'RJ001', maintenance_date: '2024-01-15', battery_condition: 'Good', no_leakage: true, easily_seated: true, adequate_level: true, secure_connections: true, charger_functions: true, display_functions: true, accurate_indicators: true, no_flickering: true, name: 'John Doe', designation: 'Tech Lead', status: 'Completed' },
-      { id: 2, serial_number: 'RJ002', maintenance_date: '2024-01-20', battery_condition: 'Fair', no_leakage: true, easily_seated: false, adequate_level: true, secure_connections: true, charger_functions: true, display_functions: true, accurate_indicators: false, no_flickering: true, name: 'Jane Smith', designation: 'Technician', status: 'Needs Attention' },
-      { id: 3, serial_number: 'RJ003', maintenance_date: null, battery_condition: null, status: 'Pending' },
-      { id: 4, serial_number: 'RJ004', maintenance_date: '2024-01-25', battery_condition: 'Excellent', no_leakage: true, easily_seated: true, adequate_level: true, secure_connections: true, charger_functions: true, display_functions: true, accurate_indicators: true, no_flickering: true, name: 'Mike Johnson', designation: 'Senior Tech', status: 'Completed' },
-      { id: 5, serial_number: 'RJ005', maintenance_date: null, battery_condition: null, status: 'Pending' },
-      // Recent month data
-      { id: 6, serial_number: 'RJ006', maintenance_date: '2024-06-10', battery_condition: 'Good', status: 'Completed' },
-      { id: 7, serial_number: 'RJ007', maintenance_date: '2024-06-15', battery_condition: 'Good', status: 'Completed' },
-      { id: 8, serial_number: 'RJ008', maintenance_date: null, battery_condition: null, status: 'Pending' },
-    ],
-    functionalTest: [
-      { id: 1, serial_number: 'RJ001', maintenance_date: '2024-01-16', powers_correctly: true, trigger_functions: true, jamming_activates: true, jamming_range: 'Excellent', name: 'Alice Brown', designation: 'Test Engineer', status: 'Completed' },
-      { id: 2, serial_number: 'RJ002', maintenance_date: '2024-01-21', powers_correctly: true, trigger_functions: false, jamming_activates: true, jamming_range: 'Good', name: 'Bob Wilson', designation: 'Technician', status: 'Needs Attention' },
-      { id: 3, serial_number: 'RJ003', maintenance_date: null, status: 'Pending' },
-      { id: 4, serial_number: 'RJ004', maintenance_date: '2024-01-26', powers_correctly: true, trigger_functions: true, jamming_activates: true, jamming_range: 'Excellent', name: 'Carol Davis', designation: 'Senior Engineer', status: 'Completed' },
-      { id: 5, serial_number: 'RJ005', maintenance_date: null, status: 'Pending' },
-      // Recent month data
-      { id: 6, serial_number: 'RJ006', maintenance_date: '2024-06-12', status: 'Completed' },
-      { id: 7, serial_number: 'RJ007', maintenance_date: null, status: 'Pending' },
-    ],
-    physicalInspection: [
-      { id: 1, serial_number: 'RJ001', inspection_date: '2024-01-17', no_visible_cracks: true, clean_surface: true, no_corrosion: true, buttons_intact: true, strap_intact: true, no_fraying: true, secure_attachment: true, bag_no_damage: true, zippers_function: true, clean_interior: true, compartments_intact: true, name: 'David Lee', designation: 'Inspector', status: 'Completed' },
-      { id: 2, serial_number: 'RJ002', inspection_date: '2024-01-22', no_visible_cracks: true, clean_surface: false, no_corrosion: true, buttons_intact: true, strap_intact: false, no_fraying: false, secure_attachment: true, bag_no_damage: true, zippers_function: true, clean_interior: false, compartments_intact: true, name: 'Sarah Miller', designation: 'Quality Inspector', status: 'Needs Attention' },
-      { id: 3, serial_number: 'RJ003', inspection_date: null, status: 'Pending' },
-      { id: 4, serial_number: 'RJ004', inspection_date: '2024-01-27', no_visible_cracks: true, clean_surface: true, no_corrosion: true, buttons_intact: true, strap_intact: true, no_fraying: true, secure_attachment: true, bag_no_damage: true, zippers_function: true, clean_interior: true, compartments_intact: true, name: 'Tom Anderson', designation: 'Senior Inspector', status: 'Completed' },
-      { id: 5, serial_number: 'RJ005', inspection_date: null, status: 'Pending' },
-      // Recent month data
-      { id: 6, serial_number: 'RJ006', inspection_date: '2024-06-18', status: 'Completed' },
-      { id: 7, serial_number: 'RJ007', inspection_date: null, status: 'Pending' },
-    ],
-    rifleJammer: [
-      { id: 1, serial_number: 'RJ001', location_id: 'LOC001', user_id: 'USER001', client_status: 'Active', type: 'Portable', manufacturing_date: '2023-06-15', delivery_date: '2023-07-01', admin_status: 'Operational' },
-      { id: 2, serial_number: 'RJ002', location_id: 'LOC002', user_id: 'USER002', client_status: 'Active', type: 'Fixed', manufacturing_date: '2023-07-20', delivery_date: '2023-08-05', admin_status: 'Maintenance Required' },
-      { id: 3, serial_number: 'RJ003', location_id: 'LOC003', user_id: 'USER003', client_status: 'Inactive', type: 'Portable', manufacturing_date: '2023-08-10', delivery_date: '2023-08-25', admin_status: 'Pending Maintenance' },
-      { id: 4, serial_number: 'RJ004', location_id: 'LOC004', user_id: 'USER004', client_status: 'Active', type: 'Mobile', manufacturing_date: '2023-09-05', delivery_date: '2023-09-20', admin_status: 'Operational' },
-      { id: 5, serial_number: 'RJ005', location_id: 'LOC005', user_id: 'USER005', client_status: 'Active', type: 'Portable', manufacturing_date: '2023-10-12', delivery_date: '2023-10-27', admin_status: 'Pending Maintenance' }
-    ]
-  };
-
-  // Calculate summary statistics for recent month only (Pending vs Completed)
-  const recentMonthStats = useMemo(() => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/admin/maintenance-stats');
+        const data = await response.json();
+        setMaintenanceData(data);
+        
+        // Get total count of jammers (assuming all serial numbers are unique)
+        const total = data.length;
+        setTotalJammers(total);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    const filterRecentMonth = (item) => {
-      if (!item.maintenance_date && !item.inspection_date) return item.status === 'Pending';
-      
-      const dateStr = item.maintenance_date || item.inspection_date;
-      const date = new Date(dateStr);
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    };
-
-    const batteryStats = {
-      completed: sampleData.batteryMaintenance.filter(item => 
-        filterRecentMonth(item) && item.status === 'Completed'
-      ).length,
-      pending: sampleData.batteryMaintenance.filter(item => 
-        filterRecentMonth(item) && item.status === 'Pending'
-      ).length
-    };
-
-    const functionalStats = {
-      completed: sampleData.functionalTest.filter(item => 
-        filterRecentMonth(item) && item.status === 'Completed'
-      ).length,
-      pending: sampleData.functionalTest.filter(item => 
-        filterRecentMonth(item) && item.status === 'Pending'
-      ).length
-    };
-
-    const physicalStats = {
-      completed: sampleData.physicalInspection.filter(item => 
-        filterRecentMonth(item) && item.status === 'Completed'
-      ).length,
-      pending: sampleData.physicalInspection.filter(item => 
-        filterRecentMonth(item) && item.status === 'Pending'
-      ).length
-    };
-
-    return { batteryStats, functionalStats, physicalStats };
+    fetchData();
   }, []);
 
-  // Prepare chart data for recent month (Pending vs Completed only)
-  const recentMonthChartData = [
-    {
-      name: 'Battery',
-      completed: recentMonthStats.batteryStats.completed,
-      pending: recentMonthStats.batteryStats.pending,
-      type: 'battery'
-    },
-    {
-      name: 'Functional',
-      completed: recentMonthStats.functionalStats.completed,
-      pending: recentMonthStats.functionalStats.pending,
-      type: 'functional'
-    },
-    {
-      name: 'Physical',
-      completed: recentMonthStats.physicalStats.completed,
-      pending: recentMonthStats.physicalStats.pending,
-      type: 'physical'
-    }
-  ];
-
-  // Filter trend data based on selected time range
-  const filteredTrendData = useMemo(() => {
-    const allTrendData = [
-      { month: 'Jan', battery: 40, functional: 45, physical: 35 },
-      { month: 'Feb', battery: 50, functional: 55, physical: 42 },
-      { month: 'Mar', battery: 65, functional: 70, physical: 60 },
-      { month: 'Apr', battery: 80, functional: 85, physical: 75 },
-      { month: 'May', battery: 90, functional: 92, physical: 88 },
-      { month: 'Jun', battery: 95, functional: 96, physical: 94 },
-      { month: 'Jul', battery: 98, functional: 97, physical: 96 },
-      { month: 'Aug', battery: 100, functional: 99, physical: 98 },
-      { month: 'Sep', battery: 102, functional: 101, physical: 100 },
-      { month: 'Oct', battery: 105, functional: 104, physical: 103 },
-      { month: 'Nov', battery: 108, functional: 107, physical: 106 },
-      { month: 'Dec', battery: 110, functional: 109, physical: 108 }
-    ];
-
-    switch(timeRange) {
-      case '3month':
-        return allTrendData.slice(-3);
-      case '6month':
-        return allTrendData.slice(-6);
-      case '1year':
-        return allTrendData;
-      case 'all':
-      default:
-        return allTrendData;
-    }
-  }, [timeRange]);
-
-  // Radar chart data for maintenance quality
-  const radarData = [
-    { maintenance: 'Battery', score: 85, fullMark: 100 },
-    { maintenance: 'Functional', score: 92, fullMark: 100 },
-    { maintenance: 'Physical', score: 78, fullMark: 100 },
-  ];
-
-  const handleChartClick = (data, index) => {
-    setSelectedMaintenanceType(recentMonthChartData[index].type);
-  };
-
-  const getDetailedData = () => {
-    if (!selectedMaintenanceType) return [];
+  // Prepare current month chart data showing completed vs remaining
+  const currentMonthData = useMemo(() => {
+    if (!maintenanceData || maintenanceData.length === 0) return [];
     
-    let data = selectedMaintenanceType === 'battery' 
-      ? sampleData.batteryMaintenance 
-      : selectedMaintenanceType === 'functional'
-      ? sampleData.functionalTest
-      : sampleData.physicalInspection;
+    // Count completed maintenance for each type
+    const batteryDone = maintenanceData.filter(item => item.battery_maintenance_date && item.battery_maintenance_date !== 'NULL').length;
+    const physicalDone = maintenanceData.filter(item => item.physical_inspection_date && item.physical_inspection_date !== 'NULL').length;
+    const functionalDone = maintenanceData.filter(item => item.functional_test_date && item.functional_test_date !== 'NULL').length;
+    
+    console.log("Calculated values:", {
+      batteryDone,
+      physicalDone,
+      functionalDone,
+      totalJammers
+    });
+    
+    return [
+      {
+        name: 'Battery',
+        Done: batteryDone,
+        Remaining: totalJammers - batteryDone,
+      },
+      {
+        name: 'Physical',
+        Done: physicalDone,
+        Remaining: totalJammers - physicalDone,
+      },
+      {
+        name: 'Functional',
+        Done: functionalDone,
+        Remaining: totalJammers - functionalDone,
+      }
+    ];
+  }, [maintenanceData, totalJammers]);
 
-    // Apply filters
-    if (searchTerm) {
-      data = data.filter(item => 
-        item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      data = data.filter(item => item.status?.toLowerCase() === statusFilter.toLowerCase());
-    }
-
-    return data;
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Completed': return <CheckCircle className="w-4 h-4 text-emerald-400" />;
-      case 'Needs Attention': return <AlertTriangle className="w-4 h-4 text-amber-400" />;
-      case 'Pending': return <Clock className="w-4 h-4 text-red-400" />;
-      default: return <Clock className="w-4 h-4 text-slate-400" />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Completed': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Needs Attention': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'Pending': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-    }
-  };
+  // Prepare trend data (simplified since we're focusing on current month)
+  const trendData = useMemo(() => {
+    // This is a simplified version since we're focusing on the current month display
+    // You might want to modify this based on your actual trend data needs
+    return [
+      { month: 'Jul', battery: 15, physical: 10, functional: 12 },
+      { month: 'Aug', battery: 18, physical: 15, functional: 16 },
+      { month: 'Sep', battery: 20, physical: 18, functional: 19 },
+    ];
+  }, []);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      return (
-        <div className="bg-slate-900/95 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-2xl">
-          <p className="text-slate-200 font-medium mb-2">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
-      );
+      // Handle stacked bar chart data (Current Month Status)
+      if (payload.some(item => item.name === 'Done')) {
+        const done = payload.find(item => item.name === 'Done')?.value || 0;
+        const remaining = payload.find(item => item.name === 'Remaining')?.value || 0;
+        const percentage = totalJammers > 0 ? Math.round((done / totalJammers) * 100) : 0;
+        
+        return (
+          <div className="bg-slate-900/95 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-2xl">
+            <p className="text-slate-200 font-medium mb-2">{label} Maintenance</p>
+            <p className="text-blue-400">Done: {done} ({percentage}%)</p>
+            <p className="text-slate-400">Remaining: {remaining}</p>
+            <p className="text-slate-500 text-xs mt-1">Total: {totalJammers}</p>
+          </div>
+        );
+      }
+      // Handle line chart data (Maintenance Trends)
+      else {
+        return (
+          <div className="bg-slate-900/95 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-2xl">
+            <p className="text-slate-200 font-medium mb-2">{label}</p>
+            {payload.map((item, index) => (
+              <p key={index} className="text-slate-200" style={{ color: item.color }}>
+                {item.name}: {item.value}
+              </p>
+            ))}
+          </div>
+        );
+      }
     }
     return null;
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
@@ -228,61 +134,35 @@ const MaintenanceDashboard = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Maintenance Status Chart (Recent Month - Pending vs Completed) */}
+          {/* Current Month Status Chart */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">Current Month Status</h3>
               <div className="flex items-center space-x-2 text-sm text-slate-500">
                 <Activity className="h-4 w-4" />
-                <span>Current Month</span>
+                <span>Total Jammers: {totalJammers}</span>
               </div>
             </div>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={recentMonthChartData}
+                  data={currentMonthData}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  onClick={handleChartClick}
+                  stackOffset="expand"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#64748b" />
                   <YAxis stroke="#64748b" />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend />
-                  <Bar dataKey="completed" fill="#00F5A0" name="Completed" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pending" fill="#FF6B6B" name="Pending" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Done" stackId="a" fill="#3b82f6" name="Completed" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Remaining" stackId="a" fill="#e2e8f0" name="Remaining" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Completion Rate Radar Chart */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-800">Maintenance Quality</h3>
-              <div className="flex items-center space-x-2 text-sm text-slate-500">
-                <TrendingUp className="h-4 w-4" />
-                <span>Quality Score</span>
-              </div>
-            </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                  <PolarGrid stroke="#f1f5f9" />
-                  <PolarAngleAxis dataKey="maintenance" stroke="#64748b" />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#64748b" />
-                  <Radar name="Score" dataKey="score" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Trends */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          {/* Maintenance Trends */}
+          {/* Maintenance Trends Chart */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-800">Maintenance Trends</h3>
@@ -302,7 +182,7 @@ const MaintenanceDashboard = () => {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={filteredTrendData}
+                  data={trendData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

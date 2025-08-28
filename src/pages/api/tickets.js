@@ -80,6 +80,7 @@ async function handleGetRequest(req, res, userId, userRole, username) {
       st.attachments, 
       st.name AS reporter, 
       st.created_at, 
+      st.quotation_inspection_at,
       st.service_under_progress_at,
       st.service_completed_at,
       st.pending_at,
@@ -317,8 +318,7 @@ async function handlePostRequest(req, res, userId, userRole, username, session) 
     if (userEmail) {
       await sendTicketAcknowledgmentEmail(
         userEmail,
-        fields.name,
-        result.insertId,
+        fields.ticketNumber ,
         fields.incidentDetails
       );
     } else {
@@ -429,25 +429,52 @@ return res.status(200).json({
   }
 }
 
-
-async function sendAssignmentEmail(toEmail, engineerName, ticketId) {
-  const transporter = nodemailer.createTransport({
-    service: 'Gmail',
+// Updated function to create Zoho email transporter
+// Updated function to create Zoho email transporter
+function createZohoTransporter() {
+  return nodemailer.createTransport({
+    host: 'smtppro.zoho.in', // Zoho SMTP server for paid accounts
+    port: 587,               // Use 465 for SSL or 587 for TLS
+    secure: false,           // true for port 465, false for 587
     auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASS,
+      user: process.env.ZOHO_EMAIL,        // e.g. customer_support@jus-tech.in
+      pass: process.env.ZOHO_APP_PASSWORD, // your Zoho app password
+    },
+    tls: {
+      rejectUnauthorized: false, // avoids self-signed cert errors
     },
   });
+}
+
+
+async function sendAssignmentEmail(toEmail, engineerName, ticketId) {
+  const transporter = createZohoTransporter();
 
   const mailOptions = {
-    from: `"Ticketing System" <${process.env.SMTP_EMAIL}>`,
+    from: `"JUS-TECH Support" <${process.env.ZOHO_EMAIL}>`, // Updated sender name
     to: toEmail,
     subject: `Ticket #${ticketId} Assigned to You`,
     html: `
-      <p>Dear ${engineerName},</p>
-      <p>You have been assigned to Ticket <strong>#${ticketId}</strong>.</p>
-      <p>Please log in to the portal to view and resolve it.</p>
-      <p>Regards,<br/>Support Team</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+          <h2 style="color: #333; margin-bottom: 20px;">Ticket Assignment Notification</h2>
+          <p>Dear ${engineerName},</p>
+          <p>You have been assigned to Ticket <strong>#${ticketId}</strong>.</p>
+          <p>Please log in to the portal to view the ticket details and begin resolution.</p>
+          <div style="margin: 20px 0; padding: 15px; background-color: #e3f2fd; border-left: 4px solid #2196f3;">
+            <strong>Next Steps:</strong>
+            <ul style="margin: 10px 0;">
+              <li>Access the support portal</li>
+              <li>Review ticket details and attachments</li>
+              <li>Update ticket status as you progress</li>
+              <li>Communicate with the customer as needed</li>
+            </ul>
+          </div>
+          <p>Best regards,<br/>
+          <strong>JUS-TECH Support Team</strong><br/>
+          customer_support@jus-tech.in</p>
+        </div>
+      </div>
     `
   };
 
@@ -455,52 +482,84 @@ async function sendAssignmentEmail(toEmail, engineerName, ticketId) {
 }
 
 
-async function sendTicketAcknowledgmentEmail(toEmail, userName, ticketId, incidentDetails) {
-  const transporter = nodemailer.createTransport({
-    service: 'Gmail',
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+async function sendTicketAcknowledgmentEmail(toEmail, ticketNumber, incidentDetails) {
+  const transporter = createZohoTransporter();
 
   const mailOptions = {
-    from: `"Support Team" <${process.env.SMTP_EMAIL}>`,
+    from: `"JUS-TECH Support" <${process.env.ZOHO_EMAIL}>`, // Updated sender name
     to: toEmail,
-    subject: `Ticket #${ticketId} Received - Confirmation`,
+    subject: `Ticket #${ticketNumber} Received - Confirmation`,
     html: `
-      <p>Dear ${userName},</p>
-      <p>Your service ticket <strong>#${ticketId}</strong> has been successfully received.</p>
-      <p><strong>Issue Reported:</strong> ${incidentDetails}</p>
-      <p>Our support team will attend to this issue at the earliest.</p>
-      <p>Thank you for reaching out to us.</p>
-      <p>Regards,<br/>Support Team</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+          <h2 style="color: #333; margin-bottom: 20px;">Service Ticket Confirmation</h2>
+          <p>Respected Sir,</p>
+          <p>Thank you for contacting JUS-TECH Support. Your service ticket has been successfully received and logged in our system.</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background-color: #e8f5e8; border-left: 4px solid #4caf50;">
+            <strong>Ticket Details:</strong><br/>
+            <strong>Ticket Number:</strong> #${ticketNumber}<br/>
+            <strong>Issue Reported:</strong> ${incidentDetails}<br/>
+            <strong>Status:</strong> Open 
+          </div>
+          
+          <p>Our technical support team will review your request and assign it to the appropriate engineer. You will receive updates as we progress with the resolution.</p>
+          
+          <p><strong>What happens next?</strong></p>
+          <ul>
+            <li>Our team will review your ticket within 24 hours</li>
+            <li>We may ask you to send the equipment to our head office so that we can inspect and service it</li>
+            <li>An engineer will be assigned to your case</li>
+            <li>You'll receive regular updates on the progress</li>
+          </ul>
+          
+          <p>If you need to provide additional information or have urgent queries, please reply to this email with your ticket number #${ticketNumber}.</p>
+          
+          <p>Thank you for choosing JUS-TECH.</p>
+          
+          <p>Best regards,<br/>
+          Ajinkya Patil<br/>
+          Customer Service Engineer<br/>
+          <strong>Jatayu Unmanned Technologies Pvt. Ltd.</strong><br/>
+          Email: customer_support@jus-tech.in<br/>
+          Phone: +91 9921149607</p>
+          
+        </div>
+      </div>
     `
   };
 
   await transporter.sendMail(mailOptions);
 }
-
 
 async function sendStatusUpdateEmail(toEmail, userName, ticketId, message) {
-  const transporter = nodemailer.createTransport({
-    service: 'Gmail',
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  const transporter = createZohoTransporter();
 
   const mailOptions = {
-    from: `"Support Team" <${process.env.SMTP_EMAIL}>`,
+    from: `"JUS-TECH Support" <${process.env.ZOHO_EMAIL}>`, // Updated sender name
     to: toEmail,
     subject: `Update on Ticket #${ticketId}`,
     html: `
-      <p>Dear ${userName},</p>
-      <p>There has been an update on your ticket <strong>#${ticketId}</strong>:</p>
-      <blockquote>${message}</blockquote>
-      <p>We will continue to keep you informed.</p>
-      <p>Regards,<br/>Support Team</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+          <h2 style="color: #333; margin-bottom: 20px;">Ticket Update Notification</h2>
+          <p>Dear ${userName},</p>
+          <p>There has been an update on your support ticket <strong>#${ticketId}</strong>:</p>
+          
+          <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+            <strong>Update:</strong><br/>
+            ${message}
+          </div>
+          
+          <p>We will continue to keep you informed of any further developments. If you have any questions or concerns, please don't hesitate to contact us.</p>
+          
+          <p>Thank you for your patience.</p>
+          
+          <p>Best regards,<br/>
+          <strong>JUS-TECH Support Team</strong><br/>
+          customer_support@jus-tech.in</p>
+        </div>
+      </div>
     `,
   };
 
